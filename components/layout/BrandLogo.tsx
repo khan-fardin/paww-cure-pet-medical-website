@@ -1,7 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-
 import { cn } from "@/lib/utils/cn";
+import { Pacifico } from "next/font/google";
+
+const pacifico = Pacifico({
+  variable: "--font-pacifico",
+  subsets: ["latin"],
+  weight: "400"
+});
 
 const logoSrc =
   "https://i.ibb.co.com/Q3dnLpz2/Gemini-Generated-Image-ce2al6ce2al6ce2a.png";
@@ -23,7 +29,7 @@ export function BrandLogo({
         <Image src={logoSrc} alt="pawwcure" fill sizes="32px" />
       </span>
       {showText ? (
-        <span className="hidden text-xl font-bold tracking-tight text-[#1A1A1A] sm:block">
+        <span className="hidden text-xl font-medium tracking-tight text-emerald-800 sm:block" style={{ fontFamily: pacifico.style.fontFamily }}>
           pawwcure
         </span>
       ) : null}

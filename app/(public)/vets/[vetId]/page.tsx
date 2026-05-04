@@ -25,9 +25,9 @@ export default async function VetProfilePage({ params }: VetProfilePageProps) {
   const { vetId } = await params;
   const cookieStore = await cookies();
 
-  if (!cookieStore.get("access_token")?.value) {
-    redirect(`/login?returnUrl=${encodeURIComponent(`/vets/${vetId}`)}`);
-  }
+  // if (!cookieStore.get("access_token")?.value) {
+  //   redirect(`/login?returnUrl=${encodeURIComponent(`/vets/${vetId}`)}`);
+  // }
 
   const vet = getDemoVet(vetId);
 
