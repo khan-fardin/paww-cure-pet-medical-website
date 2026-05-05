@@ -61,9 +61,10 @@ export default async function VetsPage() {
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {demoVets.map((vet) => {
             const profileHref = `/vets/${vet.id}`;
-            const href = isLoggedIn
-              ? profileHref
-              : `/login?returnUrl=${encodeURIComponent(profileHref)}`;
+            // const href = isLoggedIn
+            //   ? profileHref
+            //   : `/login?returnUrl=${encodeURIComponent(profileHref)}`;
+            const href = profileHref;
 
             return (
               <Link
