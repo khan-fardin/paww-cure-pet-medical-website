@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   Save,
   AlertCircle,
-  Toggle2,
   Settings as SettingsIcon,
   Bell,
   Lock,
