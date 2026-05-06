@@ -2,7 +2,7 @@
 
 import {
   TrendingUp,
-  Bell,
+  // Bell,
   CreditCard,
   FileText,
   Home,
@@ -43,10 +43,10 @@ export function MobileAdminNav() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[120] lg:hidden">
+    <div className="fixed inset-x-3 bottom-3 z-120 lg:hidden">
       <div
         className={cn(
-          "mb-3 overflow-hidden rounded-[2rem] border border-black/5 bg-white/95 shadow-[0_20px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-all duration-300",
+          "mb-3 overflow-hidden rounded-4xl border border-black/5 bg-white/95 shadow-[0_20px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-all duration-300",
           isOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none translate-y-3 opacity-0",
