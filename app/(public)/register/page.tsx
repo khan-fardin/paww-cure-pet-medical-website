@@ -39,6 +39,7 @@ export default function RegisterPage() {
               autoComplete="tel"
               name="phone"
               placeholder="+880"
+              required
               type="tel"
             />
           </label>

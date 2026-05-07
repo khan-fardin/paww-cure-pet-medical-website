@@ -1,56 +1,92 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { verifyToken } from "@/lib/auth/jwt";
 
-const protectedPrefixes = [
-  "/dashboard",
-  "/book",
-  "/consultation",
-  "/consultations",
-  "/documents",
-  "/payments",
-  "/pets",
-  "/reminders",
-] as const;
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/register",
+  "/apply-as-vet",
+  "/forgot-password",
+];
 
-function isProtectedPath(pathname: string) {
-  if (pathname.startsWith("/vets/")) {
-    return true;
-  }
+const SHARED_AUTHENTICATED = ["/consultation", "/settings", "/notifications"];
 
-  return protectedPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
+const ROLE_PREFIXES: Record<string, string[]> = {
+  owner: ["/dashboard", "/vets", "/pets", "/book",
+          "/consultations", "/documents", "/reminders", "/payments"],
+  vet:   ["/vet"],
+  mod:   ["/mod"],
+  admin: ["/admin"],
+};
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+const ROLE_HOME: Record<string, string> = {
+  owner: "/dashboard",
+  vet:   "/vet/dashboard",
+  mod:   "/mod/dashboard",
+  admin: "/admin/dashboard",
+};
 
-  if (!isProtectedPath(pathname)) {
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Always allow public paths, API routes, static files
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith("/articles") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/favicon")
+  ) {
     return NextResponse.next();
   }
 
-  const hasAccessToken = Boolean(request.cookies.get("access_token")?.value);
+  const token = req.cookies.get("access_token")?.value;
 
-  if (hasAccessToken) {
-    return NextResponse.next();
+  if (!token) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("returnUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // const loginUrl = new URL("/login", request.url);
-  // loginUrl.searchParams.set("returnUrl", `${pathname}${request.nextUrl.search}`);
+  try {
+    const payload = await verifyToken(token);
+    const role = payload.role;
 
-  // return NextResponse.redirect(loginUrl);
+    // Shared routes — any authenticated role can access
+    if (SHARED_AUTHENTICATED.some((p) => pathname.startsWith(p))) {
+      return NextResponse.next();
+    }
+
+    // Check role matches route prefix
+    const allowed = ROLE_PREFIXES[role] ?? [];
+    const isAllowed = allowed.some((p) => pathname.startsWith(p));
+
+    if (!isAllowed) {
+      return NextResponse.redirect(
+        new URL(ROLE_HOME[role] ?? "/login", req.url)
+      );
+    }
+
+    // Unverified vets can only access /vet/profile
+    if (
+      role === "vet" &&
+      !payload.isVerified &&
+      !pathname.startsWith("/vet/profile")
+    ) {
+      return NextResponse.redirect(new URL("/vet/profile", req.url));
+    }
+
+    return NextResponse.next();
+  } catch {
+    // Token expired or invalid — clear cookie and redirect
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    response.cookies.delete("access_token");
+    return response;
+  }
 }
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/book/:path*",
-    "/consultation/:path*",
-    "/consultations/:path*",
-    "/documents/:path*",
-    "/payments/:path*",
-    "/pets/:path*",
-    "/reminders/:path*",
-    "/vets/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
   ],
 };
