@@ -4,7 +4,7 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 export interface TokenPayload extends JWTPayload {
   userId: string;
-  role: "owner" | "vet" | "mod" | "admin";
+  role: "user" | "vet" | "mod" | "admin";
   isVerified?: boolean;
 }
 

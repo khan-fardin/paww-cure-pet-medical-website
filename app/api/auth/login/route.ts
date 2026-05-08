@@ -11,7 +11,7 @@ const loginSchema = z.object({
 });
 
 const ROLE_HOME: Record<string, string> = {
-  owner: "/dashboard",
+  user: "/dashboard",
   vet: "/vet/dashboard",
   mod: "/mod/dashboard",
   admin: "/admin/dashboard",

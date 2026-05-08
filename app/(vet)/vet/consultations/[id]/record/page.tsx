@@ -164,7 +164,7 @@ export default function WriteRecordPage({
                 <p className="text-sm font-bold text-blue-900">Pro tip</p>
                 <p className="mt-1 text-xs text-blue-800">
                   Be detailed in diagnosis and follow-up instructions so the
-                  owner knows what to do next.
+                  user knows what to do next.
                 </p>
               </div>
             </div>
@@ -175,7 +175,7 @@ export default function WriteRecordPage({
                 <p className="mt-1 text-slate-600">Luna (Cat)</p>
               </div>
               <div>
-                <p className="font-bold text-slate-900">Owner</p>
+                <p className="font-bold text-slate-900">User</p>
                 <p className="mt-1 text-slate-600">Nadia Chowdhury</p>
               </div>
               <div>

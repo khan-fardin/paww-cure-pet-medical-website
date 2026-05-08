@@ -12,7 +12,7 @@ const PUBLIC_PATHS = [
 const SHARED_AUTHENTICATED = ["/consultation", "/settings", "/notifications"];
 
 const ROLE_PREFIXES: Record<string, string[]> = {
-  owner: ["/dashboard", "/vets", "/pets", "/book",
+  user: ["/dashboard", "/vets", "/pets", "/book",
           "/consultations", "/documents", "/reminders", "/payments"],
   vet:   ["/vet"],
   mod:   ["/mod"],
@@ -20,13 +20,13 @@ const ROLE_PREFIXES: Record<string, string[]> = {
 };
 
 const ROLE_HOME: Record<string, string> = {
-  owner: "/dashboard",
+  user: "/dashboard",
   vet:   "/vet/dashboard",
   mod:   "/mod/dashboard",
   admin: "/admin/dashboard",
 };
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always allow public paths, API routes, static files

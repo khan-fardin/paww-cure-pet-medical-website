@@ -137,7 +137,7 @@ export default function ConsultationDetailsPage({
                 <p className="mt-1 text-slate-600">3 years</p>
               </div>
               <div>
-                <p className="font-bold text-slate-900">Owner</p>
+                <p className="font-bold text-slate-900">User</p>
                 <p className="mt-1 text-slate-600">Nadia Chowdhury</p>
               </div>
             </div>

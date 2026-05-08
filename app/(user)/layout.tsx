@@ -10,9 +10,9 @@ export default async function UserLayout({
 }>) {
   const cookieStore = await cookies();
 
-  // if (!cookieStore.get("access_token")?.value) {
-  //   redirect("/login?returnUrl=/dashboard");
-  // }
+  if (!cookieStore.get("access_token")?.value) {
+    redirect("/login?returnUrl=/dashboard");
+  }
 
   return <UserShell>{children}</UserShell>;
 }

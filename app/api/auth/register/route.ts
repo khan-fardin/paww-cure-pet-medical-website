@@ -18,11 +18,16 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, message: parsed.error.issues[0].message },
-        { status: 400 }
-      );
-    }
+  console.log(parsed.error.flatten());
+
+  return NextResponse.json(
+    {
+      success: false,
+      errors: parsed.error.flatten(),
+    },
+    { status: 400 }
+  );
+}
 
     await dbConnect();
 
@@ -41,7 +46,7 @@ export async function POST(req: NextRequest) {
       email: parsed.data.email,
       passwordHash,
       phone: parsed.data.phone,
-      role: "owner",
+      role: "user",
     });
 
     const accessToken = await signToken(

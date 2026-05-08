@@ -5,7 +5,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash?: string;
   phone?: string;
-  role: "owner" | "vet" | "mod" | "admin";
+  role: "user" | "vet" | "mod" | "admin";
   isActive: boolean;
   refreshToken?: string;
   avatar?: string;
@@ -21,8 +21,8 @@ const UserSchema = new Schema<IUser>(
     phone: String,
     role: {
       type: String,
-      enum: ["owner", "vet", "mod", "admin"],
-      default: "owner",
+      enum: ["user", "vet", "mod", "admin"],
+      default: "user",
     },
     isActive: { type: Boolean, default: true },
     refreshToken: String,
@@ -30,8 +30,6 @@ const UserSchema = new Schema<IUser>(
   },
   { timestamps: true }
 );
-
-UserSchema.index({ email: 1 });
 
 export const User =
   mongoose.models.User ?? mongoose.model<IUser>("User", UserSchema);

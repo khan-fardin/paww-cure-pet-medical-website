@@ -25,15 +25,16 @@ export function AuthPanel({ badge, children, kicker, title }: AuthPanelProps) {
           {children}
         </div>
 
-        <div className="relative hidden min-h-[620px] overflow-hidden bg-emerald-950 lg:block">
+        <div className="relative hidden min-h-155 overflow-hidden bg-emerald-950 lg:block">
           <Image
             alt="Veterinary care"
             className="object-cover opacity-80 mix-blend-luminosity"
             fill
+            loading="eager"
             sizes="40vw"
             src="https://images.unsplash.com/photo-1629909615184-74f495363b67?auto=format&fit=crop&q=80&w=900"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-emerald-950 via-emerald-950/40 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-emerald-950 via-emerald-950/40 to-transparent" />
           <div className="absolute bottom-10 left-10 right-10">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-100 backdrop-blur-xl">
               <span className="h-2 w-2 rounded-full bg-emerald-300" />

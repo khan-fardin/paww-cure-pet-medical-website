@@ -219,7 +219,7 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-[2rem] bg-gradient-to-br from-emerald-50 to-emerald-100 p-5 border border-emerald-100">
+          <div className="rounded-[2rem] bg-linear-to-br from-emerald-50 to-emerald-100 p-5 border border-emerald-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
               Total Users
             </p>
@@ -227,7 +227,7 @@ export default function AdminUsersPage() {
             <p className="mt-1 text-xs text-emerald-700/70">+142 this week</p>
           </div>
 
-          <div className="rounded-[2rem] bg-gradient-to-br from-blue-50 to-blue-100 p-5 border border-blue-100">
+          <div className="rounded-[2rem] bg-linear-to-br from-blue-50 to-blue-100 p-5 border border-blue-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
               Active Users
             </p>
@@ -235,7 +235,7 @@ export default function AdminUsersPage() {
             <p className="mt-1 text-xs text-blue-700/70">93.1% of total</p>
           </div>
 
-          <div className="rounded-[2rem] bg-gradient-to-br from-amber-50 to-amber-100 p-5 border border-amber-100">
+          <div className="rounded-[2rem] bg-linear-to-br from-amber-50 to-amber-100 p-5 border border-amber-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
               Suspended
             </p>
@@ -243,7 +243,7 @@ export default function AdminUsersPage() {
             <p className="mt-1 text-xs text-amber-700/70">Pending review</p>
           </div>
 
-          <div className="rounded-[2rem] bg-gradient-to-br from-red-50 to-red-100 p-5 border border-red-100">
+          <div className="rounded-[2rem] bg-linear-to-br from-red-50 to-red-100 p-5 border border-red-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-red-700">
               Deleted
             </p>

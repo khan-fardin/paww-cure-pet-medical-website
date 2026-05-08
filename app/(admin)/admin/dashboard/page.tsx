@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
   return (
     <section className="space-y-8">
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-rose-950 to-rose-900 p-6 text-white sm:p-8 md:rounded-[3rem] md:p-10">
+        <div className="relative overflow-hidden rounded-[2.5rem] bg-linear-to-br from-rose-950 to-rose-900 p-6 text-white sm:p-8 md:rounded-[3rem] md:p-10">
           <div className="relative z-10 max-w-2xl">
             <div className="mb-5 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-100">
               Admin Dashboard
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
         </div>
 
         <Card className="overflow-hidden p-0">
-          <div className="bg-gradient-to-br from-rose-100 to-rose-50 p-8 text-center">
+          <div className="bg-linear-to-br from-rose-100 to-rose-50 p-8 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-rose-700 mb-3" />
             <h3 className="text-lg font-bold text-rose-950 mb-2">
               System Alerts

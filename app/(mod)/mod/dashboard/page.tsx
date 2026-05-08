@@ -111,7 +111,7 @@ export default function ModDashboardPage() {
         </div>
 
         <Card className="overflow-hidden p-0">
-          <div className="bg-gradient-to-br from-amber-100 to-amber-50 p-8 text-center">
+          <div className="bg-linear-to-br from-amber-100 to-amber-50 p-8 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-amber-700 mb-3" />
             <h3 className="text-lg font-bold text-amber-950 mb-2">
               Quick Actions

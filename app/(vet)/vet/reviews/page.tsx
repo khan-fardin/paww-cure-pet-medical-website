@@ -25,7 +25,7 @@ export default function ReviewsPage() {
   const reviews = [
     {
       id: "rev-001",
-      ownerName: "Nadia Chowdhury",
+      userName: "Nadia Chowdhury",
       petName: "Luna",
       rating: 5,
       text: "Dr. Amina was amazing! She took time to understand Luna's issues and gave clear instructions. Will definitely book again!",
@@ -33,7 +33,7 @@ export default function ReviewsPage() {
     },
     {
       id: "rev-002",
-      ownerName: "Ahmed Khan",
+      userName: "Ahmed Khan",
       petName: "Max",
       rating: 4,
       text: "Good consultation, very professional. Only minor note - session could have been a bit longer.",
@@ -41,7 +41,7 @@ export default function ReviewsPage() {
     },
     {
       id: "rev-003",
-      ownerName: "Sara Islam",
+      userName: "Sara Islam",
       petName: "Whiskers",
       rating: 5,
       text: "Excellent vet! Very knowledgeable about cat nutrition. Highly recommended.",
@@ -88,7 +88,7 @@ export default function ReviewsPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <div>
-                    <p className="font-bold">{review.ownerName}</p>
+                    <p className="font-bold">{review.userName}</p>
                     <p className="text-sm text-slate-500">
                       {review.petName} • {review.date}
                     </p>

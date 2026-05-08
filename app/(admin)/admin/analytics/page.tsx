@@ -186,7 +186,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
                   style={{ width: "75%" }}
                 />
               </div>
@@ -198,7 +198,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
                   style={{ width: "84%" }}
                 />
               </div>
@@ -210,7 +210,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
                   style={{ width: "91%" }}
                 />
               </div>
@@ -222,7 +222,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
                   style={{ width: "92%" }}
                 />
               </div>
@@ -244,7 +244,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"
+                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
                   style={{ width: "70%" }}
                 />
               </div>
@@ -258,7 +258,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"
+                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
                   style={{ width: "80%" }}
                 />
               </div>
@@ -272,7 +272,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"
+                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
                   style={{ width: "97%" }}
                 />
               </div>
@@ -286,7 +286,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 rounded-full"
+                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
                   style={{ width: "100%" }}
                 />
               </div>
@@ -312,7 +312,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="h-2 rounded-full bg-slate-100">
                 <div
-                  className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full"
+                  className="h-full bg-linear-to-r from-rose-400 to-rose-600 rounded-full"
                   style={{ width: `${spec.percentage * 3}%` }}
                 />
               </div>
