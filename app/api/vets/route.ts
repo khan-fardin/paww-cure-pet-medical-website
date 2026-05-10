@@ -8,8 +8,8 @@ const querySchema = z.object({
   city: z.string().optional(),
   specialization: z.string().optional(),
   minRating: z.string().transform(Number).optional(),
-  page: z.string().transform(Number).default("1"),
-  limit: z.string().transform(Number).default("10"),
+  page: z.string().default("1").transform(Number),
+  limit: z.string().default("10").transform(Number),
 });
 
 // TODO: Implement full-text search for clinic name and vet name
@@ -22,11 +22,9 @@ export async function GET(req: NextRequest) {
     const query = {
       city: searchParams.get("city") || undefined,
       specialization: searchParams.get("specialization") || undefined,
-      minRating: searchParams.get("minRating")
-        ? Number(searchParams.get("minRating"))
-        : undefined,
-      page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
-      limit: searchParams.get("limit") ? Number(searchParams.get("limit")) : 10,
+      minRating: searchParams.get("minRating") || undefined,
+      page: searchParams.get("page") || 1,
+      limit: searchParams.get("limit") || 10,
     };
 
     const parsed = querySchema.safeParse(query);
@@ -42,8 +40,7 @@ export async function GET(req: NextRequest) {
     }
 
     await dbConnect();
-
-    const filter: any = {
+    const filter: Record<string, unknown> = {
       isVerified: true,
       isActive: true,
       acceptingNewPatients: true,

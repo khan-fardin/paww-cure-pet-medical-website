@@ -80,9 +80,7 @@ const VetProfileSchema = new Schema<IVetProfile>(
 );
 
 // Indices for common queries
-VetProfileSchema.index({ userId: 1 });
 VetProfileSchema.index({ isVerified: 1, isActive: 1 });
-VetProfileSchema.index({ licenseNumber: 1 });
 VetProfileSchema.index({ clinicCity: 1 });
 
 export const VetProfile =

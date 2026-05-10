@@ -1,48 +1,17 @@
-import type { Metadata } from "next";
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, FileText, PawPrint, Stethoscope } from "lucide-react";
+import { CalendarDays, FileText, PawPrint, Stethoscope, Loader, AlertCircle } from "lucide-react";
 
+import { usePets } from "@/lib/hooks/usePets";
+import { useConsultations } from "@/lib/hooks/useConsultations";
+import { useReminders } from "@/lib/hooks/useReminders";
 import { demoVets } from "@/lib/demo/publicContent";
 import {
   dashboardTimeline,
-  demoConsultations,
   demoDocuments,
-  demoPets,
-  demoReminders,
-  demoUser,
 } from "@/lib/demo/userContent";
-
-export const metadata: Metadata = {
-  title: "Dashboard | pawwcure",
-};
-
-const stats = [
-  {
-    icon: PawPrint,
-    label: "Pets",
-    tone: "bg-emerald-50 text-emerald-700",
-    value: demoPets.length.toString(),
-  },
-  {
-    icon: Stethoscope,
-    label: "Consults",
-    tone: "bg-blue-50 text-blue-600",
-    value: "12",
-  },
-  {
-    icon: CalendarDays,
-    label: "Reminders",
-    tone: "bg-emerald-50 text-emerald-700",
-    value: demoReminders.length.toString(),
-  },
-  {
-    icon: FileText,
-    label: "Documents",
-    tone: "bg-slate-100 text-slate-600",
-    value: demoDocuments.length.toString(),
-  },
-] as const;
 
 function Card({
   children,
@@ -61,33 +30,93 @@ function Card({
 }
 
 export default function UserDashboardPage() {
-  const activePet =
-    demoPets.find((pet) => pet.id === demoUser.activePetId) ?? demoPets[0];
-  const upcomingConsultation = demoConsultations[0];
+  const { pets, loading: petsLoading, error: petsError } = usePets();
+  const { consultations, loading: consultationsLoading, error: consultationsError } = useConsultations();
+  const { reminders, loading: remindersLoading, error: remindersError } = useReminders();
+
+  const activePet = pets[0];
+  const upcomingConsultation = consultations.filter(c => c.status === "scheduled")[0];
   const recommendedVets = demoVets.slice(0, 3);
+
+  const stats = [
+    {
+      icon: PawPrint,
+      label: "Pets",
+      tone: "bg-emerald-50 text-emerald-700",
+      value: pets.length.toString(),
+    },
+    {
+      icon: Stethoscope,
+      label: "Consults",
+      tone: "bg-blue-50 text-blue-600",
+      value: consultations.length.toString(),
+    },
+    {
+      icon: CalendarDays,
+      label: "Reminders",
+      tone: "bg-emerald-50 text-emerald-700",
+      value: reminders.filter(r => !r.isCompleted).length.toString(),
+    },
+    {
+      icon: FileText,
+      label: "Documents",
+      tone: "bg-slate-100 text-slate-600",
+      value: demoDocuments.length.toString(),
+    },
+  ] as const;
 
   return (
     <section className="space-y-8">
+      {/* Error States */}
+      {petsError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+          <div>
+            <p className="font-bold text-red-900">Failed to load pets</p>
+            <p className="text-sm text-red-700">{petsError}</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="relative overflow-hidden rounded-[2.5rem] bg-emerald-950 p-6 text-white sm:p-8 md:rounded-[3rem] md:p-10">
           <div className="relative z-10 max-w-2xl">
             <div className="mb-5 inline-flex rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-100">
               User dashboard
             </div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Hi {demoUser.name.split(" ")[0]}, Luna has a consult today.
-            </h1>
+            
+            {petsLoading ? (
+              <div className="h-16 bg-white/10 rounded-lg animate-pulse" />
+            ) : activePet ? (
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                Hi, {activePet.name} is your companion.
+              </h1>
+            ) : (
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                Welcome to pawwcure
+              </h1>
+            )}
+            
             <p className="mt-5 max-w-xl leading-relaxed text-emerald-100/70">
-              Review the waiting room, recent records, and upcoming reminders
+              Review your pets, upcoming consultations, recent records, and reminders
               from one calm workspace.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-emerald-950 shadow-xl shadow-black/10 transition hover:scale-[1.02] active:scale-95"
-                href={upcomingConsultation.href}
-              >
-                Enter Waiting Room
-              </Link>
+              {upcomingConsultation ? (
+                <Link
+                  className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-emerald-950 shadow-xl shadow-black/10 transition hover:scale-[1.02] active:scale-95"
+                  href={`/consultations/${upcomingConsultation._id}`}
+                >
+                  View Upcoming
+                </Link>
+              ) : (
+                <Link
+                  className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-emerald-950 shadow-xl shadow-black/10 transition hover:scale-[1.02] active:scale-95"
+                  href="/vets"
+                >
+                  Book a Consultation
+                </Link>
+              )}
               <Link
                 className="inline-flex justify-center rounded-2xl border border-white/15 px-6 py-4 text-sm font-bold text-white transition hover:bg-white/10"
                 href="/vets"
@@ -96,68 +125,94 @@ export default function UserDashboardPage() {
               </Link>
             </div>
 
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">
-                  Next consult
-                </p>
-                <p className="mt-1 text-xl font-bold">
-                  {upcomingConsultation.scheduledAt}
-                </p>
+            {upcomingConsultation && (
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">
+                    Next consult
+                  </p>
+                  <p className="mt-1 text-xl font-bold">
+                    {new Date(upcomingConsultation.scheduledAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">
+                    Pet
+                  </p>
+                  <p className="mt-1 text-xl font-bold">
+                    {upcomingConsultation.petId?.name || "Pet"}
+                  </p>
+                </div>
               </div>
-              <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/70">
-                  Pet
-                </p>
-                <p className="mt-1 text-xl font-bold">
-                  {upcomingConsultation.petName}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
           <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-emerald-600/25 blur-[100px]" />
         </div>
 
         <Card className="overflow-hidden p-0">
-          <div className="relative h-64">
-            <Image
-              alt={activePet.name}
-              className="object-cover"
-              fill
-              priority
-              sizes="(min-width: 1280px) 35vw, 100vw"
-              src={activePet.avatar}
-            />
-          </div>
-          <div className="p-7">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Active pet
-                </p>
-                <h2 className="mt-1 text-3xl font-bold">{activePet.name}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-400">
-                  {activePet.breed} / {activePet.age}
-                </p>
+          {petsLoading ? (
+            <div className="h-96 bg-slate-200 animate-pulse" />
+          ) : activePet ? (
+            <>
+              <div className="relative h-64">
+                {activePet.avatar ? (
+                  <Image
+                    alt={activePet.name}
+                    className="object-cover"
+                    fill
+                    priority
+                    sizes="(min-width: 1280px) 35vw, 100vw"
+                    src={activePet.avatar}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-200 flex items-center justify-center">
+                    <PawPrint className="h-16 w-16 text-slate-400" />
+                  </div>
+                )}
               </div>
-              <Link
-                className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700"
-                href={`/pets/${activePet.id}`}
-              >
-                Profile
-              </Link>
+              <div className="p-7">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Active pet
+                    </p>
+                    <h2 className="mt-1 text-3xl font-bold">{activePet.name}</h2>
+                    <p className="mt-1 text-sm font-semibold text-slate-400">
+                      {activePet.species} / {activePet.breed}
+                    </p>
+                  </div>
+                  <Link
+                    className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700"
+                    href={`/pets/${activePet._id}`}
+                  >
+                    Profile
+                  </Link>
+                </div>
+                {activePet.medicalConditions && activePet.medicalConditions.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {activePet.medicalConditions.map((condition: string) => (
+                      <span
+                        className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700"
+                        key={condition}
+                      >
+                        {condition}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="h-96 flex items-center justify-center text-center">
+              <div>
+                <PawPrint className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No pets yet</p>
+                <Link href="/pets/new" className="text-emerald-600 text-sm font-bold mt-2 inline-block">
+                  Add your first pet
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {activePet.conditions.map((condition) => (
-                <span
-                  className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700"
-                  key={condition}
-                >
-                  {condition}
-                </span>
-              ))}
-            </div>
-          </div>
+          )}
         </Card>
       </div>
 
@@ -186,49 +241,66 @@ export default function UserDashboardPage() {
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <Card>
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Upcoming consultation
-              </p>
-              <h2 className="mt-1 text-2xl font-bold">
-                {upcomingConsultation.vetName}
-              </h2>
+          {consultationsLoading ? (
+            <div className="space-y-4">
+              <div className="h-8 bg-slate-200 rounded animate-pulse w-2/3" />
+              <div className="h-4 bg-slate-200 rounded animate-pulse" />
             </div>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-              {upcomingConsultation.status}
-            </span>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              ["Pet", upcomingConsultation.petName],
-              ["Time", upcomingConsultation.scheduledAt],
-              ["Type", upcomingConsultation.type],
-            ].map(([label, value]) => (
-              <div className="rounded-[2rem] bg-slate-50 p-5" key={label}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {label}
-                </p>
-                <p className="mt-2 text-lg font-bold">{value}</p>
+          ) : upcomingConsultation ? (
+            <>
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Upcoming consultation
+                  </p>
+                  <h2 className="mt-1 text-2xl font-bold">
+                    {upcomingConsultation.vetId?.name || "Vet"}
+                  </h2>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                  {upcomingConsultation.status}
+                </span>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link
-              className="inline-flex flex-1 justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
-              href={upcomingConsultation.href}
-            >
-              Prepare Session
-            </Link>
-            <Link
-              className="inline-flex flex-1 justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600"
-              href="/consultations"
-            >
-              View All
-            </Link>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {[
+                  ["Pet", upcomingConsultation.petId?.name || "Pet"],
+                  ["Time", new Date(upcomingConsultation.scheduledAt).toLocaleDateString()],
+                  ["Type", upcomingConsultation.type],
+                ].map(([label, value]) => (
+                  <div className="rounded-[2rem] bg-slate-50 p-5" key={label}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-lg font-bold">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  className="inline-flex flex-1 justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
+                  href={`/consultations/${upcomingConsultation._id}`}
+                >
+                  View Details
+                </Link>
+                <Link
+                  className="inline-flex flex-1 justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600"
+                  href="/consultations"
+                >
+                  View All
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <Stethoscope className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">No upcoming consultations</p>
+              <Link href="/vets" className="text-emerald-600 text-sm font-bold mt-2 inline-block">
+                Book a consultation
+              </Link>
+            </div>
+          )}
         </Card>
 
         <Card>
@@ -237,14 +309,18 @@ export default function UserDashboardPage() {
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Health timeline
               </p>
-              <h2 className="mt-1 text-2xl font-bold">{activePet.name}</h2>
+              <h2 className="mt-1 text-2xl font-bold">
+                {activePet?.name || "Your Pet"}
+              </h2>
             </div>
-            <Link
-              className="text-sm font-bold text-emerald-600"
-              href={`/pets/${activePet.id}/records`}
-            >
-              Records
-            </Link>
+            {activePet && (
+              <Link
+                className="text-sm font-bold text-emerald-600"
+                href={`/pets/${activePet._id}/records`}
+              >
+                Records
+              </Link>
+            )}
           </div>
 
           <div className="space-y-5">
@@ -274,17 +350,33 @@ export default function UserDashboardPage() {
               Manage
             </Link>
           </div>
-          <div className="space-y-3">
-            {demoReminders.map((reminder) => (
-              <div className="rounded-[2rem] bg-slate-50 p-5" key={reminder.id}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {reminder.type} / {reminder.petName}
-                </p>
-                <p className="mt-2 font-bold">{reminder.title}</p>
-                <p className="mt-1 text-sm text-slate-400">{reminder.dueAt}</p>
-              </div>
-            ))}
-          </div>
+          
+          {remindersLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 rounded-[2rem] animate-pulse" />
+              ))}
+            </div>
+          ) : reminders.length > 0 ? (
+            <div className="space-y-3">
+              {reminders.filter(r => !r.isCompleted).slice(0, 3).map((reminder) => (
+                <div className="rounded-[2rem] bg-slate-50 p-5" key={reminder._id}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {reminder.type} {reminder.petId ? `/ ${reminder.petId.name}` : ""}
+                  </p>
+                  <p className="mt-2 font-bold">{reminder.title}</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {new Date(reminder.dueDate).toLocaleDateString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <CalendarDays className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">No pending reminders</p>
+            </div>
+          )}
         </Card>
 
         <Card>
@@ -294,19 +386,27 @@ export default function UserDashboardPage() {
               Vault
             </Link>
           </div>
-          <div className="space-y-3">
-            {demoDocuments.map((document) => (
-              <div className="rounded-[2rem] bg-slate-50 p-5" key={document.id}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {document.petName}
-                </p>
-                <p className="mt-2 font-bold">{document.label}</p>
-                <p className="mt-1 text-sm text-slate-400">
-                  {document.uploadedAt}
-                </p>
-              </div>
-            ))}
-          </div>
+          
+          {demoDocuments.length > 0 ? (
+            <div className="space-y-3">
+              {demoDocuments.slice(0, 3).map((document) => (
+                <div className="rounded-[2rem] bg-slate-50 p-5" key={document.id}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {document.petName}
+                  </p>
+                  <p className="mt-2 font-bold">{document.label}</p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {document.uploadedAt}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <FileText className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm text-slate-500">No documents yet</p>
+            </div>
+          )}
         </Card>
 
         <Card>

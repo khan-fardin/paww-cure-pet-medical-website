@@ -23,9 +23,11 @@ const updatePetSchema = z.object({
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -37,7 +39,7 @@ export async function GET(
 
     const payload = await verifyToken(token);
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid pet ID" },
         { status: 400 }
@@ -46,7 +48,7 @@ export async function GET(
 
     await dbConnect();
 
-    const pet = await Pet.findById(params.id).select("-__v");
+    const pet = await Pet.findById(id).select("-__v");
 
     if (!pet) {
       return NextResponse.json(
@@ -82,9 +84,11 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -103,7 +107,7 @@ export async function PUT(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid pet ID" },
         { status: 400 }
@@ -125,7 +129,7 @@ export async function PUT(
 
     await dbConnect();
 
-    const pet = await Pet.findById(params.id);
+    const pet = await Pet.findById(id);
 
     if (!pet) {
       return NextResponse.json(
@@ -175,9 +179,11 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -196,7 +202,7 @@ export async function DELETE(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid pet ID" },
         { status: 400 }
@@ -205,7 +211,7 @@ export async function DELETE(
 
     await dbConnect();
 
-    const pet = await Pet.findById(params.id);
+    const pet = await Pet.findById(id);
 
     if (!pet) {
       return NextResponse.json(

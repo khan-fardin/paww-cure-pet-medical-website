@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth/jwt";
 
 const PUBLIC_PATHS = [
   "/",
+  "/vets", 
   "/login",
   "/register",
   "/apply-as-vet",
@@ -12,7 +13,7 @@ const PUBLIC_PATHS = [
 const SHARED_AUTHENTICATED = ["/consultation", "/settings", "/notifications"];
 
 const ROLE_PREFIXES: Record<string, string[]> = {
-  user: ["/dashboard", "/vets", "/pets", "/book",
+  user: ["/dashboard", "/pets", "/book",
           "/consultations", "/documents", "/reminders", "/payments"],
   vet:   ["/vet"],
   mod:   ["/mod"],

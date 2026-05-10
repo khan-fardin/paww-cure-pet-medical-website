@@ -47,10 +47,12 @@ const updateVetSchema = z.object({
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid vet ID" },
         { status: 400 }
@@ -59,7 +61,7 @@ export async function GET(
 
     await dbConnect();
 
-    const vetProfile = await VetProfile.findById(params.id)
+    const vetProfile = await VetProfile.findById(id)
       .select("-__v")
       .populate("userId", "name email avatar");
 
@@ -72,7 +74,7 @@ export async function GET(
 
     // Fetch reviews
     const reviews = await Review.find({
-      vetId: params.id,
+      vetId: id,
       isVisible: true,
     })
       .select("-__v")
@@ -97,9 +99,11 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -118,7 +122,7 @@ export async function PUT(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid vet profile ID" },
         { status: 400 }
@@ -140,7 +144,7 @@ export async function PUT(
 
     await dbConnect();
 
-    const vetProfile = await VetProfile.findById(params.id);
+    const vetProfile = await VetProfile.findById(id);
 
     if (!vetProfile) {
       return NextResponse.json(

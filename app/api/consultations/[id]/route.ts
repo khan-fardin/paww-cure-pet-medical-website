@@ -21,9 +21,11 @@ const updateConsultationSchema = z.object({
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -35,7 +37,7 @@ export async function GET(
 
     const payload = await verifyToken(token);
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid consultation ID" },
         { status: 400 }
@@ -44,7 +46,7 @@ export async function GET(
 
     await dbConnect();
 
-    const consultation = await Consultation.findById(params.id)
+    const consultation = await Consultation.findById(id)
       .select("-__v")
       .populate("petId", "name species breed")
       .populate("vetId", "name email avatar")
@@ -71,7 +73,7 @@ export async function GET(
 
     // Fetch related prescription if exists
     const prescription = await Prescription.findOne({
-      consultationId: params.id,
+      consultationId: id,
     }).select("-__v");
 
     return NextResponse.json({
@@ -92,9 +94,11 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -113,7 +117,7 @@ export async function PUT(
       );
     }
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid consultation ID" },
         { status: 400 }
@@ -135,7 +139,7 @@ export async function PUT(
 
     await dbConnect();
 
-    const consultation = await Consultation.findById(params.id);
+    const consultation = await Consultation.findById(id);
 
     if (!consultation) {
       return NextResponse.json(
@@ -184,9 +188,11 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const token = req.cookies.get("access_token")?.value;
 
     if (!token) {
@@ -198,7 +204,7 @@ export async function DELETE(
 
     const payload = await verifyToken(token);
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, message: "Invalid consultation ID" },
         { status: 400 }
@@ -207,7 +213,7 @@ export async function DELETE(
 
     await dbConnect();
 
-    const consultation = await Consultation.findById(params.id);
+    const consultation = await Consultation.findById(id);
 
     if (!consultation) {
       return NextResponse.json(
