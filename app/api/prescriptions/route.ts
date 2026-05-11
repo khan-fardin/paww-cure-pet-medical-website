@@ -43,10 +43,10 @@ export async function GET(req: NextRequest) {
 
     let query: any = {};
 
-    if (payload.role === "owner") {
-      // Get prescriptions for owner's pets
+    if (payload.role === "user") {
+      // Get prescriptions for user's pets
       const consultations = await Consultation.find({
-        ownerId: payload.userId,
+        userId: payload.userId,
       }).select("_id");
       const consultationIds = consultations.map((c) => c._id);
       query.consultationId = { $in: consultationIds };

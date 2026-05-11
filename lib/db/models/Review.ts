@@ -3,7 +3,7 @@ import mongoose, { Schema, type Document } from "mongoose";
 export interface IReview extends Document {
   consultationId: mongoose.Types.ObjectId;
   vetId: mongoose.Types.ObjectId;
-  ownerId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   rating: number; // 1-5
   title: string;
   comment: string;
@@ -35,7 +35,7 @@ const ReviewSchema = new Schema<IReview>(
       ref: "User",
       required: true,
     },
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -61,7 +61,7 @@ const ReviewSchema = new Schema<IReview>(
 // Indices for common queries
 ReviewSchema.index({ vetId: 1 });
 ReviewSchema.index({ vetId: 1, isVisible: 1 });
-ReviewSchema.index({ ownerId: 1 });
+ReviewSchema.index({ userId: 1 });
 ReviewSchema.index({ consultationId: 1 });
 
 export const Review =

@@ -33,9 +33,9 @@ export async function GET(req: NextRequest) {
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only pet owners can view pets" },
+        { success: false, message: "Only pet users can view pets" },
         { status: 403 }
       );
     }
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const pets = await Pet.find({
-      ownerId: payload.userId,
+      userId: payload.userId,
       isActive: true,
     }).select("-__v");
 
@@ -73,9 +73,9 @@ export async function POST(req: NextRequest) {
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only pet owners can create pets" },
+        { success: false, message: "Only pet users can create pets" },
         { status: 403 }
       );
     }
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     // TODO: Validate species-specific breed combinations
 
     const pet = await Pet.create({
-      ownerId: payload.userId,
+      userId: payload.userId,
       name: parsed.data.name,
       species: parsed.data.species,
       breed: parsed.data.breed,

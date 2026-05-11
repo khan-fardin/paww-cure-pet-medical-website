@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    let query: any = { ownerId: payload.userId };
+    let query: any = { userId: payload.userId };
 
     if (petId) {
       query.petId = petId;
@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet ownership
+    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
-    if (!pet || pet.ownerId.toString() !== payload.userId) {
+    if (!pet || pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "Pet not found or not yours" },
         { status: 404 }
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     }
 
     const document = await Document.create({
-      ownerId: payload.userId,
+      userId: payload.userId,
       petId: parsed.data.petId,
       type: parsed.data.type,
       title: parsed.data.title,

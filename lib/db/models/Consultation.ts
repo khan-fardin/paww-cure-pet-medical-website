@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IConsultation extends Document {
-  ownerId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   vetId: mongoose.Types.ObjectId;
   petId: mongoose.Types.ObjectId;
   type: "video" | "audio" | "chat" | "in-clinic";
@@ -29,7 +29,7 @@ export interface IConsultation extends Document {
 
 const ConsultationSchema = new Schema<IConsultation>(
   {
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -80,7 +80,7 @@ const ConsultationSchema = new Schema<IConsultation>(
 );
 
 // Indices for common queries
-ConsultationSchema.index({ ownerId: 1, status: 1 });
+ConsultationSchema.index({ userId: 1, status: 1 });
 ConsultationSchema.index({ vetId: 1, status: 1 });
 ConsultationSchema.index({ petId: 1 });
 ConsultationSchema.index({ scheduledAt: 1 });

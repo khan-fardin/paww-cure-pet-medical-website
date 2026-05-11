@@ -194,7 +194,7 @@ export default function ContentPage() {
           </p>
           <p>
             • <span className="font-bold">Tone:</span> Should be helpful,
-            non-promotional, and pet-owner friendly
+            non-promotional, and pet-user friendly
           </p>
           <p>
             • <span className="font-bold">Citations:</span> Medical claims should

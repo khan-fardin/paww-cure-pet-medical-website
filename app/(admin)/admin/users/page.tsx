@@ -97,7 +97,7 @@ export default function AdminUsersPage() {
         <div className="mb-2 inline-flex rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
           User Management
         </div>
-        <h1 className="text-4xl font-bold">Pet Owner Accounts</h1>
+        <h1 className="text-4xl font-bold">Pet user Accounts</h1>
         <p className="mt-2 text-slate-500">
           View, manage, suspend, or delete user accounts
         </p>

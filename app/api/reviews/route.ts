@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     const reviews = await Review.find(query)
       .select("-__v")
-      .populate("ownerId", "name avatar")
+      .populate("userId", "name avatar")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({
@@ -70,9 +70,9 @@ export async function POST(req: NextRequest) {
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only owners can submit reviews" },
+        { success: false, message: "Only users can submit reviews" },
         { status: 403 }
       );
     }
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       parsed.data.consultationId
     );
 
-    if (!consultation || consultation.ownerId.toString() !== payload.userId) {
+    if (!consultation || consultation.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "Consultation not found or unauthorized" },
         { status: 404 }
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     const review = await Review.create({
       consultationId: parsed.data.consultationId,
       vetId: consultation.vetId,
-      ownerId: payload.userId,
+      userId: payload.userId,
       rating: parsed.data.rating,
       title: parsed.data.title,
       comment: parsed.data.comment,

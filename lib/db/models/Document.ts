@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IDocument extends Document {
-  ownerId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   petId: mongoose.Types.ObjectId;
   type:
     | "prescription"
@@ -16,7 +16,7 @@ export interface IDocument extends Document {
   fileUrl: string;
   fileSize: number; // in bytes
   mimeType: string;
-  uploadedBy: mongoose.Types.ObjectId; // vet or owner
+  uploadedBy: mongoose.Types.ObjectId; // vet or user
   relatedConsultationId?: mongoose.Types.ObjectId;
   isPublic: boolean;
   tags: string[];
@@ -26,7 +26,7 @@ export interface IDocument extends Document {
 
 const DocumentSchema = new Schema<IDocument>(
   {
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -70,7 +70,7 @@ const DocumentSchema = new Schema<IDocument>(
 );
 
 // Indices for common queries
-DocumentSchema.index({ ownerId: 1, petId: 1 });
+DocumentSchema.index({ userId: 1, petId: 1 });
 DocumentSchema.index({ petId: 1 });
 DocumentSchema.index({ type: 1 });
 DocumentSchema.index({ uploadedBy: 1 });

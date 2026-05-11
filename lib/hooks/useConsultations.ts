@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Consultation {
   _id: string;
@@ -30,7 +30,7 @@ interface Consultation {
     name: string;
     email: string;
   };
-  ownerId?: {
+  userId?: {
     _id: string;
     name: string;
     email: string;
@@ -51,7 +51,7 @@ export function useConsultations(): UseConsultationsReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchConsultations = async () => {
+  const fetchConsultations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -76,11 +76,15 @@ export function useConsultations(): UseConsultationsReturn {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchConsultations();
-  }, []);
+    const timeout = window.setTimeout(() => {
+      void fetchConsultations();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [fetchConsultations]);
 
   return {
     consultations,

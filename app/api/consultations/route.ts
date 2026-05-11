@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
 
     let query: any = {};
 
-    if (payload.role === "owner") {
-      query.ownerId = payload.userId;
+    if (payload.role === "user") {
+      query.userId = payload.userId;
     } else if (payload.role === "vet") {
       query.vetId = payload.userId;
     } else if (payload.role === "admin" || payload.role === "mod") {
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       .select("-__v")
       .populate("petId", "name species breed")
       .populate("vetId", "name email")
-      .populate("ownerId", "name email")
+      .populate("userId", "name email")
       .sort({ scheduledAt: -1 });
 
     return NextResponse.json({
@@ -77,9 +77,9 @@ export async function POST(req: NextRequest) {
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only pet owners can book consultations" },
+        { success: false, message: "Only pet users can book consultations" },
         { status: 403 }
       );
     }
@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet ownership
+    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
-    if (!pet || pet.ownerId.toString() !== payload.userId) {
+    if (!pet || pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "Pet not found or not yours" },
         { status: 404 }
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
     // TODO: Process payment
 
     const consultation = await Consultation.create({
-      ownerId: payload.userId,
+      userId: payload.userId,
       vetId: vet.userId,
       petId: parsed.data.petId,
       type: parsed.data.type,

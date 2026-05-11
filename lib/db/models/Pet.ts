@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IPet extends Document {
-  ownerId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   name: string;
   species: "dog" | "cat" | "rabbit" | "bird" | "other";
   breed: string;
@@ -21,7 +21,7 @@ export interface IPet extends Document {
 
 const PetSchema = new Schema<IPet>(
   {
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -52,8 +52,8 @@ const PetSchema = new Schema<IPet>(
 );
 
 // Indices for common queries
-PetSchema.index({ ownerId: 1 });
-PetSchema.index({ ownerId: 1, isActive: 1 });
+PetSchema.index({ userId: 1 });
+PetSchema.index({ userId: 1, isActive: 1 });
 PetSchema.index({ microchipId: 1 });
 
 export const Pet =

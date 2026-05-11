@@ -1,7 +1,7 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IReminder extends Document {
-  ownerId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   petId: mongoose.Types.ObjectId;
   type: "medicine" | "vaccination" | "checkup" | "follow-up" | "other";
   title: string;
@@ -19,7 +19,7 @@ export interface IReminder extends Document {
 
 const ReminderSchema = new Schema<IReminder>(
   {
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -59,10 +59,10 @@ const ReminderSchema = new Schema<IReminder>(
 );
 
 // Indices for common queries
-ReminderSchema.index({ ownerId: 1, isCompleted: 1 });
+ReminderSchema.index({ userId: 1, isCompleted: 1 });
 ReminderSchema.index({ petId: 1 });
 ReminderSchema.index({ dueDate: 1 });
-ReminderSchema.index({ ownerId: 1, dueDate: 1 });
+ReminderSchema.index({ userId: 1, dueDate: 1 });
 
 export const Reminder =
   mongoose.models.Reminder ??

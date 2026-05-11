@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const reminders = await Reminder.find({
-      ownerId: payload.userId,
+      userId: payload.userId,
     })
       .select("-__v")
       .populate("petId", "name species breed")
@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only owners can create reminders" },
+        { success: false, message: "Only users can create reminders" },
         { status: 403 }
       );
     }
@@ -90,9 +90,9 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet ownership
+    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
-    if (!pet || pet.ownerId.toString() !== payload.userId) {
+    if (!pet || pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "Pet not found or not yours" },
         { status: 404 }
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     }
 
     const reminder = await Reminder.create({
-      ownerId: payload.userId,
+      userId: payload.userId,
       petId: parsed.data.petId,
       type: parsed.data.type,
       title: parsed.data.title,

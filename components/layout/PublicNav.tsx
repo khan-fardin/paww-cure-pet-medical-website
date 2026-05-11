@@ -124,7 +124,7 @@ export function PublicNav() {
                     <Link
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
                       href={
-                        user.role === "owner"
+                        user.role === "user"
                           ? "/dashboard"
                           : user.role === "vet"
                             ? "/vet/dashboard"

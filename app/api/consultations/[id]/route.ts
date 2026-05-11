@@ -50,7 +50,7 @@ export async function GET(
       .select("-__v")
       .populate("petId", "name species breed")
       .populate("vetId", "name email avatar")
-      .populate("ownerId", "name email");
+      .populate("userId", "name email");
 
     if (!consultation) {
       return NextResponse.json(
@@ -59,12 +59,12 @@ export async function GET(
       );
     }
 
-    // Check access (owner, vet, admin, or mod)
-    const isOwner = consultation.ownerId._id?.toString() === payload.userId;
+    // Check access (user, vet, admin, or mod)
+    const isuser = consultation.userId._id?.toString() === payload.userId;
     const isVet = consultation.vetId._id?.toString() === payload.userId;
     const isAdmin = payload.role === "admin" || payload.role === "mod";
 
-    if (!isOwner && !isVet && !isAdmin) {
+    if (!isuser && !isVet && !isAdmin) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }
@@ -222,11 +222,11 @@ export async function DELETE(
       );
     }
 
-    // Only owner or vet can cancel
-    const isOwner = consultation.ownerId.toString() === payload.userId;
+    // Only user or vet can cancel
+    const isuser = consultation.userId.toString() === payload.userId;
     const isVet = consultation.vetId.toString() === payload.userId;
 
-    if (!isOwner && !isVet) {
+    if (!isuser && !isVet) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },
         { status: 403 }

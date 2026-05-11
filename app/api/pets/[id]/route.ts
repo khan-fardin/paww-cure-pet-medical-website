@@ -57,9 +57,9 @@ export async function GET(
       );
     }
 
-    // Check ownership or vet access
+    // Check usership or vet access
     if (
-      pet.ownerId.toString() !== payload.userId &&
+      pet.userId.toString() !== payload.userId &&
       payload.role !== "vet" &&
       payload.role !== "admin"
     ) {
@@ -100,9 +100,9 @@ export async function PUT(
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only owners can update pets" },
+        { success: false, message: "Only users can update pets" },
         { status: 403 }
       );
     }
@@ -138,7 +138,7 @@ export async function PUT(
       );
     }
 
-    if (pet.ownerId.toString() !== payload.userId) {
+    if (pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "You can only update your own pets" },
         { status: 403 }
@@ -195,9 +195,9 @@ export async function DELETE(
 
     const payload = await verifyToken(token);
 
-    if (payload.role !== "owner") {
+    if (payload.role !== "user") {
       return NextResponse.json(
-        { success: false, message: "Only owners can delete pets" },
+        { success: false, message: "Only users can delete pets" },
         { status: 403 }
       );
     }
@@ -220,7 +220,7 @@ export async function DELETE(
       );
     }
 
-    if (pet.ownerId.toString() !== payload.userId) {
+    if (pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
         { success: false, message: "You can only delete your own pets" },
         { status: 403 }
