@@ -45,6 +45,11 @@ const updateVetSchema = z.object({
     .optional(),
 });
 
+const reviewVetSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectionReason: z.string().optional(),
+});
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -195,6 +200,92 @@ export async function PUT(
     console.error("[vets/id] PUT error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to update vet profile" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const token = req.cookies.get("access_token")?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "Not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    const payload = await verifyToken(token);
+
+    if (payload.role !== "mod" && payload.role !== "admin") {
+      return NextResponse.json(
+        { success: false, message: "Only moderators or admins can review vets" },
+        { status: 403 }
+      );
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid vet profile ID" },
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json();
+    const parsed = reviewVetSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, errors: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    await dbConnect();
+
+    const vetProfile = await VetProfile.findById(id);
+
+    if (!vetProfile) {
+      return NextResponse.json(
+        { success: false, message: "Vet profile not found" },
+        { status: 404 }
+      );
+    }
+
+    if (parsed.data.action === "approve") {
+      vetProfile.isVerified = true;
+      vetProfile.isActive = true;
+      vetProfile.acceptingNewPatients = true;
+      vetProfile.applicationStatus = "approved";
+      vetProfile.verificationDate = new Date();
+      vetProfile.rejectionReason = undefined;
+    } else {
+      vetProfile.isVerified = false;
+      vetProfile.acceptingNewPatients = false;
+      vetProfile.applicationStatus = "rejected";
+      vetProfile.rejectionReason =
+        parsed.data.rejectionReason ?? "Application rejected";
+    }
+
+    await vetProfile.save();
+
+    return NextResponse.json({
+      success: true,
+      message:
+        parsed.data.action === "approve"
+          ? "Vet approved successfully"
+          : "Vet application rejected",
+      data: vetProfile,
+    });
+  } catch (error) {
+    console.error("[vets/id] PATCH error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to review vet application" },
       { status: 500 }
     );
   }

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    let query: any = {};
+    const query: Record<string, unknown> = {};
 
     if (payload.role === "user") {
       // Get prescriptions for user's pets

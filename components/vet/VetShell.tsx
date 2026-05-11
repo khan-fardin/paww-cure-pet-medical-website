@@ -27,8 +27,25 @@ const navItems = [
   { href: "/vet/reviews", icon: MessageSquare, label: "Reviews" },
 ] as const;
 
-export function VetShell({ children }: { children: ReactNode }) {
-  const currentVet = demoVets[0]; // Demo: Dr. Amina
+type ShellVet = {
+  avatar?: string;
+  name: string;
+  specialty?: string;
+};
+
+export function VetShell({
+  children,
+  vet,
+}: {
+  children: ReactNode;
+  vet?: ShellVet;
+}) {
+  const fallbackVet = demoVets[0];
+  const currentVet = {
+    avatar: vet?.avatar ?? fallbackVet.avatar,
+    name: vet?.name ?? fallbackVet.name,
+    specialty: vet?.specialty ?? fallbackVet.specialties[0],
+  };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A]">
@@ -40,7 +57,7 @@ export function VetShell({ children }: { children: ReactNode }) {
           </p>
           <p className="mt-1 text-xl font-bold">{currentVet.name}</p>
           <p className="mt-1 text-sm font-semibold opacity-70">
-            {currentVet.specialties[0]}
+            {currentVet.specialty}
           </p>
         </div>
 
@@ -74,7 +91,7 @@ export function VetShell({ children }: { children: ReactNode }) {
               Vet portal
             </span>
             <p className="text-sm font-bold text-slate-500">
-              Welcome back, {currentVet.name.split(" ")[1]}
+              Welcome back, {currentVet.name.split(" ").at(-1)}
             </p>
           </div>
 

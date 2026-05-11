@@ -184,7 +184,7 @@ export default function VetDashboardPage() {
           <div className="mb-6 flex items-center justify-between gap-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Today's schedule
+                Today&apos;s schedule
               </p>
               <h2 className="mt-1 text-2xl font-bold">
                 {todaysSessions.length} confirmed sessions

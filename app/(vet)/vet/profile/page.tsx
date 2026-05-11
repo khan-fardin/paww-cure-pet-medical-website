@@ -1,210 +1,195 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
-import { demoVets } from "@/lib/demo/publicContent";
+import { getSession } from "@/lib/auth/session";
+import { dbConnect } from "@/lib/db/connect";
+import "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 
 export const metadata: Metadata = {
   title: "My Profile | pawwcure",
 };
 
-function Card({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`rounded-[2.5rem] border border-slate-100 bg-white p-7 shadow-sm ${className}`}
-    >
-      {children}
-    </div>
-  );
+type VetProfileView = {
+  _id: { toString(): string };
+  applicationStatus: "draft" | "submitted" | "approved" | "rejected";
+  availability?: { day: string; startTime: string; endTime: string }[];
+  bio?: string;
+  clinicAddress: string;
+  clinicCity: string;
+  clinicName: string;
+  consultationDuration: number;
+  consultationFee: number;
+  degreeDocumentName?: string;
+  experience: number;
+  isVerified: boolean;
+  languages: string[];
+  licenseDocumentName?: string;
+  licenseNumber: string;
+  phoneNumber: string;
+  rejectionReason?: string;
+  specializations: string[];
+  userId?: {
+    avatar?: string;
+    email?: string;
+    name?: string;
+  };
+};
+
+function statusStyle(status: VetProfileView["applicationStatus"]) {
+  if (status === "approved") return "border-emerald-100 bg-emerald-50 text-emerald-800";
+  if (status === "rejected") return "border-red-100 bg-red-50 text-red-800";
+  return "border-amber-100 bg-amber-50 text-amber-800";
 }
 
-export default function ProfilePage() {
-  const currentVet = demoVets[0];
+export default async function ProfilePage() {
+  const session = await getSession();
+
+  await dbConnect();
+
+  const profile = session
+    ? ((await VetProfile.findOne({ userId: session.userId })
+        .populate("userId", "name email avatar")
+        .lean()) as unknown as VetProfileView | null)
+    : null;
+
+  if (!profile) {
+    return (
+      <section className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">My Profile</h1>
+          <p className="mt-2 text-slate-500">
+            Your vet profile appears after you submit an application.
+          </p>
+        </div>
+
+        <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm">
+          <h2 className="text-2xl font-bold">No vet application found</h2>
+          <p className="mt-3 max-w-2xl leading-relaxed text-slate-500">
+            Apply as a vet to create your professional record. Once a moderator
+            approves it, this profile becomes the profile users can book.
+          </p>
+          <Link
+            className="mt-6 inline-flex rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
+            href="/apply-as-vet"
+          >
+            Start application
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  const name = profile.userId?.name ?? "Vet profile";
+  const avatar =
+    profile.userId?.avatar ?? `https://i.pravatar.cc/240?u=${profile._id}`;
 
   return (
     <section className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">My Profile</h1>
         <p className="mt-2 text-slate-500">
-          Edit your public profile and credentials
+          This is the profile connected to your application and public vet page.
         </p>
       </div>
 
-      <Card>
-        <div className="grid gap-8 md:grid-cols-[200px_1fr]">
-          <div className="mx-auto">
-            <Image
-              alt={currentVet.name}
-              className="h-40 w-40 rounded-3xl object-cover"
-              height={160}
-              src={currentVet.avatar}
-              width={160}
-            />
-            <button className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
-              Change Photo
-            </button>
-          </div>
+      <div
+        className={`rounded-[2rem] border px-5 py-4 text-sm font-bold ${statusStyle(
+          profile.applicationStatus
+        )}`}
+      >
+        Application status: {profile.applicationStatus}
+        {profile.rejectionReason ? ` - ${profile.rejectionReason}` : ""}
+      </div>
 
-          <div className="space-y-4">
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <aside className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <Image
+            alt={name}
+            className="h-48 w-full rounded-[2rem] object-cover"
+            height={240}
+            src={avatar}
+            width={320}
+          />
+          <h2 className="mt-5 text-2xl font-bold">{name}</h2>
+          <p className="mt-1 text-sm text-slate-500">{profile.userId?.email}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {profile.specializations.map((specialty) => (
+              <span
+                className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700"
+                key={specialty}
+              >
+                {specialty}
+              </span>
+            ))}
+          </div>
+        </aside>
+
+        <div className="space-y-6">
+          <Card title="Professional Details">
+            <Info label="Bio" value={profile.bio || "No bio provided"} />
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  First name
-                </label>
-                <input
-                  className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  defaultValue="Amina"
-                  type="text"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Last name
-                </label>
-                <input
-                  className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  defaultValue="Rahman"
-                  type="text"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Email
-              </label>
-              <input
-                className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                defaultValue="amina@example.com"
-                type="email"
+              <Info label="Experience" value={`${profile.experience} years`} />
+              <Info label="Fee" value={`BDT ${profile.consultationFee}`} />
+              <Info
+                label="Session duration"
+                value={`${profile.consultationDuration} minutes`}
+              />
+              <Info
+                label="Languages"
+                value={profile.languages.length ? profile.languages.join(", ") : "English"}
               />
             </div>
-          </div>
+          </Card>
+
+          <Card title="Clinic & Credentials">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Info label="Clinic" value={profile.clinicName} />
+              <Info label="Phone" value={profile.phoneNumber} />
+              <Info
+                label="Location"
+                value={`${profile.clinicAddress}, ${profile.clinicCity}`}
+              />
+              <Info label="License" value={profile.licenseNumber} />
+              <Info
+                label="License document"
+                value={profile.licenseDocumentName ?? "Not uploaded"}
+              />
+              <Info
+                label="Degree document"
+                value={profile.degreeDocumentName ?? "Not uploaded"}
+              />
+            </div>
+          </Card>
         </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-2xl font-bold mb-4">Professional Details</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Bio / About
-            </label>
-            <textarea
-              className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-              defaultValue={currentVet.bio}
-              rows={4}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Years of experience
-              </label>
-              <input
-                className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                defaultValue={currentVet.yearsExperience}
-                type="number"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Consultation fee (BDT)
-              </label>
-              <input
-                className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                defaultValue="1200"
-                type="number"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Specialties
-            </label>
-            <div className="mt-3 space-y-2">
-              {currentVet.specialties.map((specialty) => (
-                <div
-                  className="flex items-center justify-between rounded-2xl bg-slate-50 p-3"
-                  key={specialty}
-                >
-                  <span className="font-bold">{specialty}</span>
-                  <button className="text-red-600 hover:text-red-700">✕</button>
-                </div>
-              ))}
-            </div>
-            <input
-              className="mt-3 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-              placeholder="Add a specialty..."
-              type="text"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Languages spoken
-            </label>
-            <div className="mt-3 space-y-2 flex flex-wrap gap-2">
-              {currentVet.languages.map((lang) => (
-                <span
-                  className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700"
-                  key={lang}
-                >
-                  {lang}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="text-2xl font-bold mb-4">Education & Credentials</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Education
-            </label>
-            <textarea
-              className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-              defaultValue={currentVet.education}
-              rows={2}
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              License document
-            </label>
-            <div className="mt-3 rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center">
-              <p className="text-sm text-slate-500">
-                Upload your license document (PDF, JPG, PNG)
-              </p>
-              <input
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="mt-2 w-full"
-                type="file"
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className="flex gap-4">
-        <button className="flex-1 rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700">
-          Save Changes
-        </button>
-        <button className="flex-1 rounded-2xl border border-slate-200 px-6 py-3 font-bold text-slate-600 transition hover:bg-slate-50">
-          Cancel
-        </button>
       </div>
     </section>
+  );
+}
+
+function Card({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <section className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-sm sm:p-7">
+      <h2 className="mb-5 text-2xl font-bold">{title}</h2>
+      <div className="space-y-5">{children}</div>
+    </section>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-2 leading-relaxed text-slate-700">{value}</p>
+    </div>
   );
 }

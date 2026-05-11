@@ -190,7 +190,7 @@ export default function VetsPage() {
                     )}
                     {vet.isVerified && (
                       <span className="absolute left-5 top-5 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 backdrop-blur-xl">
-                        ✓ Verified
+                        Verified
                       </span>
                     )}
                   </div>
@@ -230,7 +230,7 @@ export default function VetsPage() {
                       <div className="mb-4 flex items-center justify-between text-sm">
                         <span className="font-bold text-slate-400">Fee</span>
                         <span className="font-bold text-[#1A1A1A]">
-                          ${vet.consultationFee}
+                          BDT {vet.consultationFee}
                         </span>
                       </div>
                       <span className="inline-flex w-full justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition group-hover:bg-emerald-700">

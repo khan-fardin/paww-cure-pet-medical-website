@@ -7,6 +7,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { cn } from "@/lib/utils/cn";
 
 type SaveState = "idle" | "saving" | "saved" | "submitted";
+type SubmitState = "idle" | "submitting" | "success" | "error";
 
 type VetApplicationDraft = {
   bio: string;
@@ -115,6 +116,8 @@ export function VetApplicationWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [draft, setDraft] = useState<VetApplicationDraft>(initialDraft);
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [submitMessage, setSubmitMessage] = useState("");
 
   const stepTitle = steps[currentStep];
   const isFinalStep = currentStep === steps.length - 1;
@@ -157,6 +160,8 @@ export function VetApplicationWizard() {
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
     setSaveState("idle");
+    setSubmitState("idle");
+    setSubmitMessage("");
   }
 
   function toggleSpecialty(specialty: string) {
@@ -189,7 +194,35 @@ export function VetApplicationWizard() {
 
   async function submitApplication() {
     await saveDraft(currentStep);
-    setSaveState("submitted");
+    setSubmitState("submitting");
+
+    try {
+      const response = await fetch("/api/vets", {
+        body: JSON.stringify(draft),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const data = (await response.json()) as {
+        message?: string;
+        success?: boolean;
+      };
+
+      if (!response.ok) {
+        setSubmitState("error");
+        setSubmitMessage(data.message ?? "Application could not be submitted.");
+        return;
+      }
+
+      window.localStorage.removeItem(draftKey);
+      setSaveState("submitted");
+      setSubmitState("success");
+      setSubmitMessage(
+        "Application submitted. A moderator will review your profile.",
+      );
+    } catch {
+      setSubmitState("error");
+      setSubmitMessage("Network error. Please try again.");
+    }
   }
 
   return (
@@ -247,7 +280,11 @@ export function VetApplicationWizard() {
                 {saveState === "saved" && "Draft saved"}
                 {saveState === "submitted" &&
                   "Application submitted for moderator review"}
+                {submitState === "submitting" && "Submitting application..."}
+                {submitState === "success" && submitMessage}
+                {submitState === "error" && submitMessage}
                 {saveState === "idle" &&
+                  submitState === "idle" &&
                   "Draft saves when you continue to the next step."}
               </div>
             </aside>
@@ -478,11 +515,15 @@ export function VetApplicationWizard() {
                   <Button
                     className="sm:min-w-48"
                     disabled={
-                      saveState === "saving" || saveState === "submitted"
+                      saveState === "saving" ||
+                      saveState === "submitted" ||
+                      submitState === "submitting"
                     }
                     onClick={submitApplication}
                   >
-                    Submit Application
+                    {submitState === "submitting"
+                      ? "Submitting..."
+                      : "Submit Application"}
                   </Button>
                 ) : (
                   <Button

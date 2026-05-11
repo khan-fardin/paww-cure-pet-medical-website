@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { dbConnect } from "@/lib/db/connect";
 import { User } from "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 import { comparePassword } from "@/lib/auth/hash";
 import { signToken } from "@/lib/auth/jwt";
 
@@ -54,15 +55,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const accessToken = await signToken(
-      { userId: user._id.toString(), role: user.role },
-      "15m"
-    );
+    const vetProfile =
+      user.role === "vet"
+        ? await VetProfile.findOne({ userId: user._id }).select("isVerified")
+        : null;
 
-    const refreshToken = await signToken(
-      { userId: user._id.toString(), role: user.role },
-      "7d"
-    );
+    const tokenPayload = {
+      userId: user._id.toString(),
+      role: user.role,
+      ...(user.role === "vet" ? { isVerified: Boolean(vetProfile?.isVerified) } : {}),
+    };
+
+    const accessToken = await signToken(tokenPayload, "15m");
+
+    const refreshToken = await signToken(tokenPayload, "7d");
 
     await User.findByIdAndUpdate(user._id, { refreshToken });
 

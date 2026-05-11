@@ -63,6 +63,7 @@ export function useReminders(): UseRemindersReturn {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchReminders();
   }, []);
 

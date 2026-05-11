@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    let query: any = { userId: payload.userId };
+    const query: Record<string, unknown> = { userId: payload.userId };
 
     if (petId) {
       query.petId = petId;

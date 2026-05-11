@@ -4,7 +4,6 @@ import { verifyToken } from "@/lib/auth/jwt";
 import { dbConnect } from "@/lib/db/connect";
 import { Review } from "@/lib/db/models/Review";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { VetProfile } from "@/lib/db/models/VetProfile";
 
 // TODO: Implement review moderation and flagging system
 // TODO: Add review verification (only after consultation completed)
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    let query: any = { isVisible: true };
+    const query: Record<string, unknown> = { isVisible: true };
 
     if (vetId) {
       query.vetId = vetId;

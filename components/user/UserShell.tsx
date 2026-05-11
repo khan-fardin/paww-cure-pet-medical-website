@@ -26,9 +26,30 @@ const navItems = [
   { href: "/payments", icon: CreditCard, label: "Payments" },
 ] as const;
 
-export function UserShell({ children }: { children: ReactNode }) {
-  const activePet =
+type ShellPet = {
+  breed?: string;
+  name: string;
+  weight?: string;
+};
+
+type ShellUser = {
+  avatar?: string;
+  name: string;
+};
+
+export function UserShell({
+  activePet: realActivePet,
+  children,
+  user,
+}: {
+  activePet?: ShellPet;
+  children: ReactNode;
+  user?: ShellUser;
+}) {
+  const fallbackPet =
     demoPets.find((pet) => pet.id === demoUser.activePetId) ?? demoPets[0];
+  const activePet = realActivePet ?? fallbackPet;
+  const currentUser = user ?? demoUser;
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A]">
@@ -74,7 +95,7 @@ export function UserShell({ children }: { children: ReactNode }) {
               User portal
             </span>
             <p className="text-sm font-bold text-slate-500">
-              Welcome back, {demoUser.name.split(" ")[0]}
+              Welcome back, {currentUser.name.split(" ")[0]}
             </p>
           </div>
 
@@ -93,10 +114,13 @@ export function UserShell({ children }: { children: ReactNode }) {
               <span className="hidden sm:inline">Alerts</span>
             </button>
             <Image
-              alt={demoUser.name}
+              alt={currentUser.name}
               className="h-10 w-10 rounded-full object-cover"
               height={40}
-              src={demoUser.avatar}
+              src={
+                currentUser.avatar ??
+                `https://i.pravatar.cc/120?u=${encodeURIComponent(currentUser.name)}`
+              }
               width={40}
             />
           </div>

@@ -161,7 +161,7 @@ export default function TicketsPage() {
                 </div>
 
                 <p className="text-slate-700 bg-slate-50 p-3 rounded-2xl text-sm">
-                  "{ticket.lastMessage}"
+                  &quot;{ticket.lastMessage}&quot;
                 </p>
 
                 <div className="mt-3 flex gap-2">

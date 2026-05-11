@@ -72,7 +72,7 @@ export default function FlagsPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-bold text-red-900">
-                        {flag.vetName}'s Review
+                        {flag.vetName}&apos;s Review
                       </p>
                       <p className="mt-1 text-sm text-red-800">{flag.flagReason}</p>
                     </div>
@@ -82,7 +82,9 @@ export default function FlagsPage() {
                   </div>
 
                   <div className="mt-4 rounded-2xl bg-white p-4">
-                    <p className="italic text-slate-700">"{flag.reviewText}"</p>
+                    <p className="italic text-slate-700">
+                      &quot;{flag.reviewText}&quot;
+                    </p>
                     <p className="mt-3 text-xs text-slate-500">
                       Flagged by: {flag.flaggedBy}
                     </p>

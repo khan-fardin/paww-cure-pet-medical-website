@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth/jwt";
 import { signToken } from "@/lib/auth/jwt";
 import { dbConnect } from "@/lib/db/connect";
 import { User } from "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,8 +35,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const vetProfile =
+      user.role === "vet"
+        ? await VetProfile.findOne({ userId: user._id }).select("isVerified")
+        : null;
+
     const newAccessToken = await signToken(
-      { userId: user._id.toString(), role: user.role },
+      {
+        userId: user._id.toString(),
+        role: user.role,
+        ...(user.role === "vet"
+          ? { isVerified: Boolean(vetProfile?.isVerified) }
+          : {}),
+      },
       "15m"
     );
 

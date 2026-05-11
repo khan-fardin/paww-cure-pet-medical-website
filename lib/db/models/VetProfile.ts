@@ -3,7 +3,10 @@ import mongoose, { Schema, type Document } from "mongoose";
 export interface IVetProfile extends Document {
   userId: mongoose.Types.ObjectId;
   licenseNumber: string;
+  issuingAuthority?: string;
+  licenseExpiryDate?: Date;
   specializations: string[];
+  languages: string[];
   experience: number; // in years
   bio?: string;
   clinicName: string;
@@ -17,6 +20,10 @@ export interface IVetProfile extends Document {
   consultationDuration: number; // in minutes
   isVerified: boolean;
   verificationDate?: Date;
+  applicationStatus: "draft" | "submitted" | "approved" | "rejected";
+  rejectionReason?: string;
+  licenseDocumentName?: string;
+  degreeDocumentName?: string;
   isActive: boolean;
   averageRating: number; // 0-5
   totalReviews: number;
@@ -39,7 +46,10 @@ const VetProfileSchema = new Schema<IVetProfile>(
       unique: true,
     },
     licenseNumber: { type: String, required: true, unique: true, trim: true },
+    issuingAuthority: String,
+    licenseExpiryDate: Date,
     specializations: [String],
+    languages: [String],
     experience: { type: Number, required: true, min: 0 },
     bio: String,
     clinicName: { type: String, required: true, trim: true },
@@ -53,6 +63,15 @@ const VetProfileSchema = new Schema<IVetProfile>(
     consultationDuration: { type: Number, default: 30, min: 15 },
     isVerified: { type: Boolean, default: false },
     verificationDate: Date,
+    applicationStatus: {
+      type: String,
+      enum: ["draft", "submitted", "approved", "rejected"],
+      default: "submitted",
+      index: true,
+    },
+    rejectionReason: String,
+    licenseDocumentName: String,
+    degreeDocumentName: String,
     isActive: { type: Boolean, default: true },
     averageRating: { type: Number, default: 0, min: 0, max: 5 },
     totalReviews: { type: Number, default: 0, min: 0 },

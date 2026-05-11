@@ -217,7 +217,7 @@ export default function ModDashboardPage() {
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Recent activity
               </p>
-              <h2 className="mt-1 text-2xl font-bold">Today's Queue</h2>
+              <h2 className="mt-1 text-2xl font-bold">Today&apos;s Queue</h2>
             </div>
           </div>
 
