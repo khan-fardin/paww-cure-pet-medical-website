@@ -54,7 +54,6 @@ const PetSchema = new Schema<IPet>(
 // Indices for common queries
 PetSchema.index({ userId: 1 });
 PetSchema.index({ userId: 1, isActive: 1 });
-PetSchema.index({ microchipId: 1 });
 
 export const Pet =
   mongoose.models.Pet ?? mongoose.model<IPet>("Pet", PetSchema);

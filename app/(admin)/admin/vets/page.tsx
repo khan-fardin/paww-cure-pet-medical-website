@@ -18,6 +18,7 @@ type AdminVet = {
   avatar?: string;
   bio?: string;
   clinicCity: string;
+  clinicName?: string;
   consultationFee: number;
   createdAt: Date;
   degreeDocumentName?: string;
@@ -44,6 +45,7 @@ function toVetItem(vet: AdminVet): VetApplicationItem {
     avatar: vet.userId?.avatar ?? vet.avatar,
     bio: vet.bio,
     clinicCity: vet.clinicCity,
+    clinicName: vet.clinicName,
     consultationFee: vet.consultationFee,
     createdAt: vet.createdAt.toISOString(),
     degreeDocumentName: vet.degreeDocumentName,

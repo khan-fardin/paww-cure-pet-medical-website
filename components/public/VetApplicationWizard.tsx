@@ -11,9 +11,15 @@ type SubmitState = "idle" | "submitting" | "success" | "error";
 
 type VetApplicationDraft = {
   bio: string;
+  clinicAddress: string;
+  clinicCity: string;
+  clinicName: string;
+  clinicPostalCode: string;
+  clinicProvince: string;
   consultFee: string;
   degreeFileName: string;
   email: string;
+  experience: string;
   expiryDate: string;
   issuingAuthority: string;
   languages: string;
@@ -29,9 +35,15 @@ const draftKey = "pawwcure-vet-application-draft";
 
 const initialDraft: VetApplicationDraft = {
   bio: "",
+  clinicAddress: "",
+  clinicCity: "",
+  clinicName: "",
+  clinicPostalCode: "",
+  clinicProvince: "",
   consultFee: "",
   degreeFileName: "",
   email: "",
+  experience: "",
   expiryDate: "",
   issuingAuthority: "",
   languages: "",
@@ -236,8 +248,8 @@ export function VetApplicationWizard() {
             Apply to care through pawwcure
           </h1>
           <p className="text-lg leading-relaxed text-slate-500">
-            Complete the five-step application. Your progress is saved on each
-            step while the backend workflow is being connected.
+            Complete the five-step application. Your profile is submitted to the
+            moderator queue for review.
           </p>
         </div>
 
@@ -408,6 +420,19 @@ export function VetApplicationWizard() {
                         value={draft.languages}
                       />
                     </FieldLabel>
+                    <FieldLabel label="Years of experience">
+                      <Input
+                        min="0"
+                        onChange={(event) =>
+                          updateDraft("experience", event.target.value)
+                        }
+                        placeholder="5"
+                        type="number"
+                        value={draft.experience}
+                      />
+                    </FieldLabel>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2">
                     <FieldLabel label="Consult fee">
                       <Input
                         min="0"
@@ -417,6 +442,55 @@ export function VetApplicationWizard() {
                         placeholder="1200"
                         type="number"
                         value={draft.consultFee}
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Clinic name">
+                      <Input
+                        onChange={(event) =>
+                          updateDraft("clinicName", event.target.value)
+                        }
+                        placeholder="PawCare Veterinary Clinic"
+                        value={draft.clinicName}
+                      />
+                    </FieldLabel>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <FieldLabel label="Clinic city">
+                      <Input
+                        onChange={(event) =>
+                          updateDraft("clinicCity", event.target.value)
+                        }
+                        placeholder="Dhaka"
+                        value={draft.clinicCity}
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Clinic province/division">
+                      <Input
+                        onChange={(event) =>
+                          updateDraft("clinicProvince", event.target.value)
+                        }
+                        placeholder="Dhaka"
+                        value={draft.clinicProvince}
+                      />
+                    </FieldLabel>
+                  </div>
+                  <div className="grid gap-5 sm:grid-cols-[1fr_160px]">
+                    <FieldLabel label="Clinic address">
+                      <Input
+                        onChange={(event) =>
+                          updateDraft("clinicAddress", event.target.value)
+                        }
+                        placeholder="House, road, area"
+                        value={draft.clinicAddress}
+                      />
+                    </FieldLabel>
+                    <FieldLabel label="Postal code">
+                      <Input
+                        onChange={(event) =>
+                          updateDraft("clinicPostalCode", event.target.value)
+                        }
+                        placeholder="1207"
+                        value={draft.clinicPostalCode}
                       />
                     </FieldLabel>
                   </div>
@@ -480,6 +554,9 @@ export function VetApplicationWizard() {
                     ["Phone", draft.phone],
                     ["License", draft.licenseNumber],
                     ["Authority", draft.issuingAuthority],
+                    ["Experience", draft.experience],
+                    ["Clinic", draft.clinicName],
+                    ["City", draft.clinicCity],
                     ["Specialties", draft.specialties.join(", ")],
                     ["Languages", draft.languages],
                     ["Consult fee", draft.consultFee],

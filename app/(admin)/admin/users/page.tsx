@@ -1,78 +1,48 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Search,
-  MoreVertical,
-  Shield,
-  Trash2,
+  CalendarDays,
+  Cat,
   Eye,
-  LogIn,
-  Phone,
   Mail,
-  MapPin,
+  Phone,
+  Search,
+  Shield,
+  UserRound,
 } from "lucide-react";
+
+import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Pet } from "@/lib/db/models/Pet";
+import { User } from "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "User Management | pawwcure Admin",
 };
 
-const users = [
-  {
-    id: 1,
-    name: "Sarah Ahmed",
-    email: "sarah.ahmed@example.com",
-    phone: "+880 1712-345678",
-    location: "Dhaka, Bangladesh",
-    joinDate: "Jan 15, 2026",
-    pets: 3,
-    status: "active",
-    accountValue: "BDT 45,200",
-  },
-  {
-    id: 2,
-    name: "Rahman Khan",
-    email: "rahman@example.com",
-    phone: "+880 1834-567890",
-    location: "Chittagong, Bangladesh",
-    joinDate: "Feb 22, 2026",
-    pets: 1,
-    status: "active",
-    accountValue: "BDT 12,500",
-  },
-  {
-    id: 3,
-    name: "Fatima Begum",
-    email: "fatima.b@example.com",
-    phone: "+880 1923-456789",
-    location: "Sylhet, Bangladesh",
-    joinDate: "Mar 10, 2026",
-    pets: 2,
-    status: "suspended",
-    accountValue: "BDT 28,900",
-  },
-  {
-    id: 4,
-    name: "Imran Hassan",
-    email: "imran.hassan@example.com",
-    phone: "+880 1756-234567",
-    location: "Dhaka, Bangladesh",
-    joinDate: "Apr 3, 2026",
-    pets: 4,
-    status: "active",
-    accountValue: "BDT 67,400",
-  },
-  {
-    id: 5,
-    name: "Nadia Islam",
-    email: "nadia.islam@example.com",
-    phone: "+880 1667-345678",
-    location: "Khulna, Bangladesh",
-    joinDate: "Apr 18, 2026",
-    pets: 2,
-    status: "active",
-    accountValue: "BDT 19,800",
-  },
-];
+type AdminUsersPageProps = {
+  searchParams?: Promise<{
+    q?: string;
+    role?: string;
+    status?: string;
+  }>;
+};
+
+type AdminUser = {
+  _id: { toString(): string };
+  avatar?: string;
+  createdAt: Date;
+  email: string;
+  isActive: boolean;
+  name: string;
+  phone?: string;
+  role: "admin" | "mod" | "user" | "vet";
+};
+
+type CountRow = {
+  _id: { toString(): string };
+  count: number;
+};
 
 function Card({
   children,
@@ -90,168 +60,270 @@ function Card({
   );
 }
 
-export default function AdminUsersPage() {
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function statusClass(isActive: boolean) {
+  return isActive
+    ? "bg-emerald-100 text-emerald-700"
+    : "bg-red-100 text-red-700";
+}
+
+function roleClass(role: AdminUser["role"]) {
+  if (role === "admin") return "bg-rose-100 text-rose-700";
+  if (role === "mod") return "bg-amber-100 text-amber-700";
+  if (role === "vet") return "bg-teal-100 text-teal-700";
+  return "bg-emerald-100 text-emerald-700";
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: AdminUsersPageProps) {
+  const filters = (await searchParams) ?? {};
+  const q = filters.q?.trim() ?? "";
+  const role = filters.role ?? "all";
+  const status = filters.status ?? "all";
+
+  await dbConnect();
+
+  const query: Record<string, unknown> = {};
+
+  if (q) {
+    query.$or = [
+      { name: { $regex: q, $options: "i" } },
+      { email: { $regex: q, $options: "i" } },
+      { phone: { $regex: q, $options: "i" } },
+    ];
+  }
+
+  if (["user", "vet", "mod", "admin"].includes(role)) {
+    query.role = role;
+  }
+
+  if (status === "active") query.isActive = true;
+  if (status === "inactive") query.isActive = false;
+
+  const [users, totalUsers, activeUsers, inactiveUsers, vets, petRows, spendRows] =
+    await Promise.all([
+      User.find(query)
+        .select("name email phone role isActive avatar createdAt")
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean(),
+      User.countDocuments({ role: "user" }),
+      User.countDocuments({ role: "user", isActive: true }),
+      User.countDocuments({ role: "user", isActive: false }),
+      User.countDocuments({ role: "vet" }),
+      Pet.aggregate<CountRow>([
+        { $group: { _id: "$userId", count: { $sum: 1 } } },
+      ]),
+      Consultation.aggregate<{ _id: { toString(): string }; total: number }>([
+        { $match: { paymentStatus: "completed" } },
+        { $group: { _id: "$userId", total: { $sum: "$fees.total" } } },
+      ]),
+    ]);
+
+  const petCounts = new Map(
+    petRows.map((row) => [row._id.toString(), row.count])
+  );
+  const spendTotals = new Map(
+    spendRows.map((row) => [row._id.toString(), row.total])
+  );
+
   return (
     <section className="space-y-8">
       <div>
         <div className="mb-2 inline-flex rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
           User Management
         </div>
-        <h1 className="text-4xl font-bold">Pet user Accounts</h1>
+        <h1 className="text-4xl font-bold">Platform Accounts</h1>
         <p className="mt-2 text-slate-500">
-          View, manage, suspend, or delete user accounts
+          Search, inspect, and monitor users across every platform role.
         </p>
       </div>
 
-      <Card className="p-0 overflow-hidden">
-        <div className="border-b border-slate-100 bg-slate-50 p-5">
-          <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-2 border border-slate-200">
+      <div className="grid gap-4 md:grid-cols-4">
+        <Stat label="Pet users" tone="emerald" value={totalUsers} />
+        <Stat label="Active users" tone="blue" value={activeUsers} />
+        <Stat label="Inactive users" tone="amber" value={inactiveUsers} />
+        <Stat label="Vet accounts" tone="rose" value={vets} />
+      </div>
+
+      <Card className="overflow-hidden p-0">
+        <form
+          className="grid gap-3 border-b border-slate-100 bg-slate-50 p-5 lg:grid-cols-[1fr_180px_180px_auto]"
+          action="/admin/users"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2">
             <Search className="h-4 w-4 text-slate-400" />
             <input
               className="flex-1 bg-transparent text-sm font-bold placeholder-slate-400 outline-none"
-              placeholder="Search users by name or email..."
+              defaultValue={q}
+              name="q"
+              placeholder="Search name, email, or phone..."
               type="text"
             />
           </div>
-        </div>
+
+          <select
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 outline-none"
+            defaultValue={role}
+            name="role"
+          >
+            <option value="all">All roles</option>
+            <option value="user">Users</option>
+            <option value="vet">Vets</option>
+            <option value="mod">Moderators</option>
+            <option value="admin">Admins</option>
+          </select>
+
+          <select
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 outline-none"
+            defaultValue={status}
+            name="status"
+          >
+            <option value="all">Any status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          <button
+            className="rounded-2xl bg-rose-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-rose-700"
+            type="submit"
+          >
+            Apply
+          </button>
+        </form>
 
         <div className="divide-y divide-slate-100">
-          {users.map((user) => (
-            <div
-              className="hover:bg-slate-50 transition p-6 flex items-center justify-between gap-4"
-              key={user.id}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-bold text-slate-900 truncate">{user.name}</h3>
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                      user.status === "active"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {user.status}
-                  </span>
-                </div>
-                <div className="grid gap-1 text-xs text-slate-500">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-3 w-3" />
-                    {user.email}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-3 w-3" />
-                    {user.phone}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3" />
-                    {user.location}
-                  </div>
-                </div>
-              </div>
+          {(users as unknown as AdminUser[]).map((user) => {
+            const userId = user._id.toString();
+            const petCount = petCounts.get(userId) ?? 0;
+            const spend = spendTotals.get(userId) ?? 0;
 
-              <div className="grid gap-2 text-right text-sm">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+            return (
+              <div
+                className="grid gap-5 p-5 transition hover:bg-slate-50 lg:grid-cols-[1fr_160px_170px_112px]"
+                key={userId}
+              >
+                <div className="min-w-0">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-lg font-bold text-slate-900">
+                      {user.name}
+                    </h3>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${roleClass(
+                        user.role
+                      )}`}
+                    >
+                      {user.role}
+                    </span>
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass(
+                        user.isActive
+                      )}`}
+                    >
+                      {user.isActive ? "active" : "inactive"}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{user.email}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Phone className="h-3 w-3 shrink-0" />
+                      {user.phone || "No phone"}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CalendarDays className="h-3 w-3 shrink-0" />
+                      Joined {formatDate(user.createdAt)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Pets
                   </p>
-                  <p className="text-2xl font-bold">{user.pets}</p>
+                  <p className="mt-1 flex items-center gap-2 text-2xl font-bold">
+                    <Cat className="h-5 w-5 text-slate-400" />
+                    {petCount}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+
+                <div className="rounded-[1.5rem] bg-slate-50 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Account Value
                   </p>
-                  <p className="font-bold text-slate-900">{user.accountValue}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">
+                    BDT {new Intl.NumberFormat("en-BD").format(spend)}
+                  </p>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-                  title="View account details"
-                  type="button"
-                >
-                  <Eye className="h-4 w-4" />
-                </button>
-                <button
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-                  title="Impersonate user"
-                  type="button"
-                >
-                  <LogIn className="h-4 w-4" />
-                </button>
-                <div className="relative group">
+                <div className="flex items-center gap-2 lg:justify-end">
+                  <Link
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                    href={`/admin/users?id=${userId}`}
+                    title="View account details"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
                   <button
-                    className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                    title="Role controls"
                     type="button"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <Shield className="h-4 w-4" />
                   </button>
-                  <div className="absolute right-0 top-full z-10 mt-2 w-40 rounded-2xl border border-slate-100 bg-white shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition">
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-t-2xl">
-                      Edit account
-                    </button>
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-amber-700 hover:bg-amber-50">
-                      Warn user
-                    </button>
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-red-700 hover:bg-red-50">
-                      Suspend account
-                    </button>
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-red-700 hover:bg-red-50 rounded-b-2xl">
-                      Delete permanently
-                    </button>
-                  </div>
                 </div>
               </div>
+            );
+          })}
+
+          {users.length === 0 ? (
+            <div className="p-10 text-center">
+              <UserRound className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 font-bold text-slate-700">No accounts found</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Try a different search term or role filter.
+              </p>
             </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Statistics
-            </p>
-            <h2 className="mt-1 text-2xl font-bold">User Overview</h2>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-[2rem] bg-linear-to-br from-emerald-50 to-emerald-100 p-5 border border-emerald-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-              Total Users
-            </p>
-            <p className="mt-2 text-3xl font-bold text-emerald-900">2,847</p>
-            <p className="mt-1 text-xs text-emerald-700/70">+142 this week</p>
-          </div>
-
-          <div className="rounded-[2rem] bg-linear-to-br from-blue-50 to-blue-100 p-5 border border-blue-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
-              Active Users
-            </p>
-            <p className="mt-2 text-3xl font-bold text-blue-900">2,651</p>
-            <p className="mt-1 text-xs text-blue-700/70">93.1% of total</p>
-          </div>
-
-          <div className="rounded-[2rem] bg-linear-to-br from-amber-50 to-amber-100 p-5 border border-amber-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
-              Suspended
-            </p>
-            <p className="mt-2 text-3xl font-bold text-amber-900">196</p>
-            <p className="mt-1 text-xs text-amber-700/70">Pending review</p>
-          </div>
-
-          <div className="rounded-[2rem] bg-linear-to-br from-red-50 to-red-100 p-5 border border-red-100">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-red-700">
-              Deleted
-            </p>
-            <p className="mt-2 text-3xl font-bold text-red-900">45</p>
-            <p className="mt-1 text-xs text-red-700/70">This month</p>
-          </div>
+          ) : null}
         </div>
       </Card>
     </section>
+  );
+}
+
+function Stat({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: "amber" | "blue" | "emerald" | "rose";
+  value: number;
+}) {
+  const tones = {
+    amber: "border-amber-100 bg-amber-50 text-amber-900",
+    blue: "border-blue-100 bg-blue-50 text-blue-900",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-900",
+    rose: "border-rose-100 bg-rose-50 text-rose-900",
+  };
+
+  return (
+    <div className={`rounded-[2rem] border p-5 ${tones[tone]}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
+    </div>
   );
 }

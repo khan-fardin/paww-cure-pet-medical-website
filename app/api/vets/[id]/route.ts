@@ -3,15 +3,7 @@ import { z } from "zod";
 import { verifyToken } from "@/lib/auth/jwt";
 import { dbConnect } from "@/lib/db/connect";
 import { VetProfile } from "@/lib/db/models/VetProfile";
-import { Review } from "@/lib/db/models/Review";
 import mongoose from "mongoose";
-
-// TODO: Add availability slots generation
-// TODO: Implement consultation booking history for authenticated users
-// TODO: Cache vet profiles with Redis
-// TODO: Implement admin verification process for profile changes
-// TODO: Add audit log for profile updates
-// TODO: Send email notification on availability changes
 
 const updateVetSchema = z.object({
   specializations: z.array(z.string()).optional(),
@@ -77,21 +69,9 @@ export async function GET(
       );
     }
 
-    // Fetch reviews
-    const reviews = await Review.find({
-      vetId: id,
-      isVisible: true,
-    })
-      .select("-__v")
-      .sort({ createdAt: -1 })
-      .limit(10);
-
     return NextResponse.json({
       success: true,
-      data: {
-        ...vetProfile.toObject(),
-        reviews,
-      },
+      data: vetProfile,
     });
   } catch (error) {
     console.error("[vets/id] GET error:", error);

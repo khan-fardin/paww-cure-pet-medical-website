@@ -15,9 +15,15 @@ const querySchema = z.object({
 
 const vetApplicationSchema = z.object({
   bio: z.string().optional(),
+  clinicAddress: z.string().min(2),
+  clinicCity: z.string().min(2),
+  clinicName: z.string().min(2),
+  clinicPostalCode: z.string().min(2),
+  clinicProvince: z.string().min(2),
   consultFee: z.coerce.number().min(0).default(0),
   degreeFileName: z.string().optional(),
   email: z.string().email(),
+  experience: z.coerce.number().min(0).default(0),
   expiryDate: z.string().optional(),
   issuingAuthority: z.string().optional(),
   languages: z.string().optional(),
@@ -28,10 +34,6 @@ const vetApplicationSchema = z.object({
   phone: z.string().optional(),
   specialties: z.array(z.string()).default([]),
 });
-
-// TODO: Implement full-text search for clinic name and vet name
-// TODO: Add pagination cursor support
-// TODO: Implement caching for vet listings
 
 export async function GET(req: NextRequest) {
   try {
@@ -112,7 +114,11 @@ export async function POST(req: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { success: false, errors: parsed.error.flatten() },
+        {
+          success: false,
+          message: "Please complete the required application fields.",
+          errors: parsed.error.flatten(),
+        },
         { status: 400 }
       );
     }
@@ -160,13 +166,13 @@ export async function POST(req: NextRequest) {
             .map((item) => item.trim())
             .filter(Boolean)
         : [],
-      experience: 0,
+      experience: parsed.data.experience,
       bio: parsed.data.bio,
-      clinicName: `${parsed.data.name}'s Clinic`,
-      clinicAddress: "Pending profile completion",
-      clinicCity: "Dhaka",
-      clinicProvince: "Dhaka",
-      clinicPostalCode: "0000",
+      clinicName: parsed.data.clinicName,
+      clinicAddress: parsed.data.clinicAddress,
+      clinicCity: parsed.data.clinicCity,
+      clinicProvince: parsed.data.clinicProvince,
+      clinicPostalCode: parsed.data.clinicPostalCode,
       phoneNumber: parsed.data.phone ?? "",
       servicesOffered: parsed.data.specialties,
       consultationFee: parsed.data.consultFee,

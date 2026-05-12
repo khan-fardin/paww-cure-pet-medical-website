@@ -10,6 +10,7 @@ export type VetApplicationItem = {
   avatar?: string;
   bio?: string;
   clinicCity: string;
+  clinicName?: string;
   consultationFee: number;
   createdAt: string;
   degreeDocumentName?: string;
@@ -122,6 +123,15 @@ export function VetReviewQueue({ vets }: { vets: VetApplicationItem[] }) {
                       <Info label="Email" value={vet.email} />
                       <Info label="License" value={vet.licenseNumber} />
                       <Info label="Fee" value={`BDT ${vet.consultationFee}`} />
+                      <Info
+                        label="Experience"
+                        value={`${vet.experience} years`}
+                      />
+                      <Info
+                        label="Clinic"
+                        value={vet.clinicName ?? "Not provided"}
+                      />
+                      <Info label="City" value={vet.clinicCity} />
                     </div>
 
                     <p className="max-w-4xl text-sm leading-relaxed text-slate-500">
@@ -218,12 +228,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 function DocButton({ label }: { label: string }) {
   return (
-    <button
+    <span
       className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
-      type="button"
     >
       <FileText className="h-4 w-4" />
       {label}
-    </button>
+    </span>
   );
 }

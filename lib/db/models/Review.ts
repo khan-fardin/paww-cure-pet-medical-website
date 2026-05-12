@@ -62,7 +62,6 @@ const ReviewSchema = new Schema<IReview>(
 ReviewSchema.index({ vetId: 1 });
 ReviewSchema.index({ vetId: 1, isVisible: 1 });
 ReviewSchema.index({ userId: 1 });
-ReviewSchema.index({ consultationId: 1 });
 
 export const Review =
   mongoose.models.Review ?? mongoose.model<IReview>("Review", ReviewSchema);
