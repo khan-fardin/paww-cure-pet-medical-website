@@ -4,16 +4,18 @@ declare global {
   var _mongooseConn: typeof mongoose | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI!;
-
-if (!MONGODB_URI) {
-  throw new Error("MONGODB_URI environment variable is not set");
-}
-
 export async function dbConnect() {
   if (global._mongooseConn) return global._mongooseConn;
 
-  global._mongooseConn = await mongoose.connect(MONGODB_URI, {
+  const mongoUri = process.env.MONGODB_URI;
+
+  if (!mongoUri) {
+    throw new Error(
+      "MONGODB_URI is not configured. Add it to the deployment environment."
+    );
+  }
+
+  global._mongooseConn = await mongoose.connect(mongoUri, {
     maxPoolSize: 10,
   });
 
