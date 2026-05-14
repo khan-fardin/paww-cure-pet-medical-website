@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    const existingUser = await User.findOne({ email: parsed.data.email });
+    const existingUser = await VetProfile.findOne({ email: parsed.data.email });
     if (existingUser) {
       return NextResponse.json(
         { success: false, message: "Email already registered" },

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { CheckCircle2, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -229,41 +231,72 @@ export function VetApplicationWizard() {
       setSaveState("submitted");
       setSubmitState("success");
       setSubmitMessage(
-        "Application submitted. A moderator will review your profile.",
+        "Application submitted successfully! A moderator will review your profile within 24 hours.",
       );
     } catch {
       setSubmitState("error");
-      setSubmitMessage("Network error. Please try again.");
+      setSubmitMessage("Network error. Please check your connection and try again.");
     }
   }
 
+  // Show success state
+  if (submitState === "success") {
+    return (
+      <section className="flex min-h-screen items-center justify-center px-6 py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="mb-8 inline-flex items-center justify-center">
+            <CheckCircle2 className="h-24 w-24 text-emerald-600" />
+          </div>
+          <h1 className="mb-4 text-4xl font-bold">Application Submitted!</h1>
+          <p className="mb-8 text-lg text-slate-600">{submitMessage}</p>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              We will notify you via email when your profile is reviewed.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-emerald-700"
+              >
+                Return Home
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="px-6 pb-20 pt-32">
+    <section className="px-3 pb-20 pt-20 sm:px-6 sm:pt-32">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10 max-w-3xl">
-          <div className="mb-5 inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+        <div className="mb-8 max-w-3xl sm:mb-10">
+          <div className="mb-3 inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 sm:mb-5">
             Vet application
           </div>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
+          <h1 className="mb-2 text-3xl font-bold tracking-tight sm:mb-4 sm:text-4xl md:text-5xl">
             Apply to care through pawwcure
           </h1>
-          <p className="text-lg leading-relaxed text-slate-500">
+          <p className="text-base leading-relaxed text-slate-500 sm:text-lg">
             Complete the five-step application. Your profile is submitted to the
             moderator queue for review.
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-[3rem] bg-white shadow-sm ring-1 ring-slate-100">
-          <div className="grid gap-0 lg:grid-cols-[0.78fr_1.22fr]">
-            <aside className="bg-emerald-950 p-8 text-white sm:p-10">
-              <div className="mb-10">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 sm:rounded-4xl">
+          <div className="grid gap-0 md:grid-cols-[0.78fr_1.22fr]">
+            <aside className="bg-emerald-950 p-5 text-white sm:p-8 md:p-10">
+              <div className="mb-6 sm:mb-10">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/70">
                   Application progress
                 </p>
-                <h2 className="mt-3 text-3xl font-bold">{stepTitle}</h2>
+                <h2 className="mt-2 text-xl font-bold sm:mt-3 sm:text-3xl">
+                  {stepTitle}
+                </h2>
               </div>
 
-              <div className="space-y-5">
+              <div className="hidden space-y-4 sm:space-y-5 md:block">
                 {steps.map((step, index) => (
                   <StepBadge
                     index={index}
@@ -275,11 +308,11 @@ export function VetApplicationWizard() {
                 ))}
               </div>
 
-              <div className="mt-10 grid grid-cols-5 gap-2">
+              <div className="mb-6 grid grid-cols-5 gap-2 md:mt-10">
                 {steps.map((step, index) => (
                   <span
                     className={cn(
-                      "h-2 rounded-full",
+                      "h-1 rounded-full sm:h-2",
                       index <= currentStep ? "bg-emerald-400" : "bg-white/10",
                     )}
                     key={`${step}-progress`}
@@ -287,64 +320,68 @@ export function VetApplicationWizard() {
                 ))}
               </div>
 
-              <div className="mt-10 rounded-[2rem] border border-white/10 bg-white/10 p-5 text-sm leading-relaxed text-emerald-50">
+              <div className="rounded-xl border border-white/10 bg-white/10 p-3 text-xs leading-relaxed text-emerald-50 sm:rounded-4xl sm:p-5 sm:text-sm">
                 {saveState === "saving" && "Saving draft..."}
-                {saveState === "saved" && "Draft saved"}
-                {saveState === "submitted" &&
-                  "Application submitted for moderator review"}
-                {submitState === "submitting" && "Submitting application..."}
-                {submitState === "success" && submitMessage}
-                {submitState === "error" && submitMessage}
+                {saveState === "saved" && "✓ Draft saved"}
+                {saveState === "submitted" && "✓ Application submitted"}
+                {submitState === "submitting" && "Submitting..."}
+                {submitState === "error" && (
+                  <span className="text-red-200">{submitMessage}</span>
+                )}
                 {saveState === "idle" &&
                   submitState === "idle" &&
                   "Draft saves when you continue to the next step."}
               </div>
             </aside>
 
-            <div className="p-8 sm:p-10 lg:p-12">
+            <div className="p-5 sm:p-8 md:p-10 lg:p-12">
               {currentStep === 0 ? (
-                <div className="space-y-5">
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <FieldLabel label="Full name">
+                <div className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldLabel label="Full name *">
                       <Input
                         autoComplete="name"
                         onChange={(event) =>
                           updateDraft("name", event.target.value)
                         }
                         placeholder="Dr. Amina Rahman"
+                        required
                         value={draft.name}
                       />
                     </FieldLabel>
-                    <FieldLabel label="Phone">
+                    <FieldLabel label="Phone *">
                       <Input
                         autoComplete="tel"
                         onChange={(event) =>
                           updateDraft("phone", event.target.value)
                         }
-                        placeholder="+880"
+                        placeholder="+880 1XXXXXXXXX"
+                        required
                         type="tel"
                         value={draft.phone}
                       />
                     </FieldLabel>
                   </div>
-                  <FieldLabel label="Email address">
+                  <FieldLabel label="Email address *">
                     <Input
                       autoComplete="email"
                       onChange={(event) =>
                         updateDraft("email", event.target.value)
                       }
                       placeholder="doctor@example.com"
+                      required
                       type="email"
                       value={draft.email}
                     />
                   </FieldLabel>
-                  <FieldLabel label="Password">
+                  <FieldLabel label="Password (min. 8 chars) *">
                     <Input
                       autoComplete="new-password"
                       onChange={(event) =>
                         updateDraft("password", event.target.value)
                       }
                       placeholder="Create a secure password"
+                      required
                       type="password"
                       value={draft.password}
                     />
@@ -353,17 +390,18 @@ export function VetApplicationWizard() {
               ) : null}
 
               {currentStep === 1 ? (
-                <div className="space-y-5">
-                  <FieldLabel label="License number">
+                <div className="space-y-4">
+                  <FieldLabel label="License number *">
                     <Input
                       onChange={(event) =>
                         updateDraft("licenseNumber", event.target.value)
                       }
                       placeholder="VET-2026-001"
+                      required
                       value={draft.licenseNumber}
                     />
                   </FieldLabel>
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <FieldLabel label="Issuing authority">
                       <Input
                         onChange={(event) =>
@@ -387,16 +425,16 @@ export function VetApplicationWizard() {
               ) : null}
 
               {currentStep === 2 ? (
-                <div className="space-y-6">
+                <div className="space-y-5 sm:space-y-6">
                   <div>
                     <span className="mb-3 block text-sm font-bold text-slate-700">
-                      Specialties
+                      Specialties *
                     </span>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
                       {specialtyOptions.map((specialty) => (
                         <button
                           className={cn(
-                            "rounded-full border px-4 py-2 text-sm font-bold transition",
+                            "rounded-full border px-3 py-2 text-xs font-bold transition sm:px-4 sm:py-2 sm:text-sm",
                             selectedSpecialties.has(specialty)
                               ? "border-emerald-600 bg-emerald-600 text-white"
                               : "border-slate-200 bg-white text-slate-500 hover:border-emerald-200 hover:bg-emerald-50",
@@ -410,7 +448,7 @@ export function VetApplicationWizard() {
                       ))}
                     </div>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <FieldLabel label="Languages">
                       <Input
                         onChange={(event) =>
@@ -420,76 +458,83 @@ export function VetApplicationWizard() {
                         value={draft.languages}
                       />
                     </FieldLabel>
-                    <FieldLabel label="Years of experience">
+                    <FieldLabel label="Years of experience *">
                       <Input
                         min="0"
                         onChange={(event) =>
                           updateDraft("experience", event.target.value)
                         }
                         placeholder="5"
+                        required
                         type="number"
                         value={draft.experience}
                       />
                     </FieldLabel>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <FieldLabel label="Consult fee">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldLabel label="Consult fee *">
                       <Input
                         min="0"
                         onChange={(event) =>
                           updateDraft("consultFee", event.target.value)
                         }
                         placeholder="1200"
+                        required
                         type="number"
                         value={draft.consultFee}
                       />
                     </FieldLabel>
-                    <FieldLabel label="Clinic name">
+                    <FieldLabel label="Clinic name *">
                       <Input
                         onChange={(event) =>
                           updateDraft("clinicName", event.target.value)
                         }
                         placeholder="PawCare Veterinary Clinic"
+                        required
                         value={draft.clinicName}
                       />
                     </FieldLabel>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <FieldLabel label="Clinic city">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldLabel label="Clinic city *">
                       <Input
                         onChange={(event) =>
                           updateDraft("clinicCity", event.target.value)
                         }
                         placeholder="Dhaka"
+                        required
                         value={draft.clinicCity}
                       />
                     </FieldLabel>
-                    <FieldLabel label="Clinic province/division">
+                    <FieldLabel label="Clinic province/division *">
                       <Input
                         onChange={(event) =>
                           updateDraft("clinicProvince", event.target.value)
                         }
                         placeholder="Dhaka"
+                        required
                         value={draft.clinicProvince}
                       />
                     </FieldLabel>
                   </div>
-                  <div className="grid gap-5 sm:grid-cols-[1fr_160px]">
-                    <FieldLabel label="Clinic address">
+                  <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
+                    <FieldLabel label="Clinic address *">
                       <Input
                         onChange={(event) =>
                           updateDraft("clinicAddress", event.target.value)
                         }
                         placeholder="House, road, area"
+                        required
                         value={draft.clinicAddress}
                       />
                     </FieldLabel>
-                    <FieldLabel label="Postal code">
+                    <FieldLabel label="Postal code *">
                       <Input
                         onChange={(event) =>
                           updateDraft("clinicPostalCode", event.target.value)
                         }
                         placeholder="1207"
+                        required
                         value={draft.clinicPostalCode}
                       />
                     </FieldLabel>
@@ -507,70 +552,90 @@ export function VetApplicationWizard() {
               ) : null}
 
               {currentStep === 3 ? (
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <FieldLabel label="License scan">
-                    <Input
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      onChange={(event) =>
-                        updateDraft(
-                          "licenseFileName",
-                          event.target.files?.[0]?.name ?? "",
-                        )
-                      }
-                      type="file"
-                    />
-                    {draft.licenseFileName ? (
-                      <p className="mt-2 text-xs font-bold text-emerald-600">
-                        {draft.licenseFileName}
-                      </p>
-                    ) : null}
-                  </FieldLabel>
+                <div className="space-y-4 sm:space-y-5">
+                  <p className="text-sm text-slate-600">
+                    Upload clear scans of your credentials. Accepted formats: JPG, PNG, PDF
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FieldLabel label="License scan *">
+                      <div className="space-y-2">
+                        <Input
+                          accept=".jpg,.jpeg,.png,.pdf"
+                          onChange={(event) =>
+                            updateDraft(
+                              "licenseFileName",
+                              event.target.files?.[0]?.name ?? "",
+                            )
+                          }
+                          required
+                          type="file"
+                        />
+                        {draft.licenseFileName ? (
+                          <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {draft.licenseFileName}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400">No file selected</p>
+                        )}
+                      </div>
+                    </FieldLabel>
 
-                  <FieldLabel label="Degree certificate">
-                    <Input
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      onChange={(event) =>
-                        updateDraft(
-                          "degreeFileName",
-                          event.target.files?.[0]?.name ?? "",
-                        )
-                      }
-                      type="file"
-                    />
-                    {draft.degreeFileName ? (
-                      <p className="mt-2 text-xs font-bold text-emerald-600">
-                        {draft.degreeFileName}
-                      </p>
-                    ) : null}
-                  </FieldLabel>
+                    <FieldLabel label="Degree certificate *">
+                      <div className="space-y-2">
+                        <Input
+                          accept=".jpg,.jpeg,.png,.pdf"
+                          onChange={(event) =>
+                            updateDraft(
+                              "degreeFileName",
+                              event.target.files?.[0]?.name ?? "",
+                            )
+                          }
+                          required
+                          type="file"
+                        />
+                        {draft.degreeFileName ? (
+                          <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            {draft.degreeFileName}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-slate-400">No file selected</p>
+                        )}
+                      </div>
+                    </FieldLabel>
+                  </div>
                 </div>
               ) : null}
 
               {currentStep === 4 ? (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
+                  <p className="mb-4 text-sm text-slate-600">
+                    Please review your information before submitting. Once submitted, a moderator will review within 24 hours.
+                  </p>
                   {[
                     ["Name", draft.name],
                     ["Email", draft.email],
                     ["Phone", draft.phone],
                     ["License", draft.licenseNumber],
                     ["Authority", draft.issuingAuthority],
-                    ["Experience", draft.experience],
+                    ["Experience", draft.experience + " years"],
                     ["Clinic", draft.clinicName],
                     ["City", draft.clinicCity],
-                    ["Specialties", draft.specialties.join(", ")],
-                    ["Languages", draft.languages],
-                    ["Consult fee", draft.consultFee],
+                    ["Specialties", draft.specialties.join(", ") || "Not selected"],
+                    ["Languages", draft.languages || "Not specified"],
+                    ["Consult fee", "BDT " + draft.consultFee],
                     ["License scan", draft.licenseFileName],
                     ["Degree certificate", draft.degreeFileName],
                   ].map(([label, value]) => (
                     <div
-                      className="flex flex-col gap-1 rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between sm:rounded-2xl sm:p-4"
                       key={label}
                     >
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                         {label}
                       </span>
-                      <span className="text-sm font-bold text-slate-700">
+                      <span className="text-sm font-bold text-slate-700 wrap-break-word">
                         {value || "Not provided"}
                       </span>
                     </div>
@@ -578,9 +643,9 @@ export function VetApplicationWizard() {
                 </div>
               ) : null}
 
-              <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+              <div className="mt-8 flex flex-col gap-2 sm:mt-10 sm:flex-row-reverse sm:justify-between sm:gap-3">
                 <Button
-                  className="sm:min-w-32"
+                  className="w-full sm:min-w-40"
                   disabled={currentStep === 0 || saveState === "saving"}
                   onClick={goBack}
                   variant="secondary"
@@ -590,11 +655,22 @@ export function VetApplicationWizard() {
 
                 {isFinalStep ? (
                   <Button
-                    className="sm:min-w-48"
+                    className="w-full sm:min-w-52"
                     disabled={
                       saveState === "saving" ||
                       saveState === "submitted" ||
-                      submitState === "submitting"
+                      submitState === "submitting" ||
+                      !draft.name ||
+                      !draft.email ||
+                      !draft.password ||
+                      !draft.licenseNumber ||
+                      !draft.clinicName ||
+                      !draft.clinicCity ||
+                      !draft.clinicProvince ||
+                      !draft.clinicAddress ||
+                      !draft.clinicPostalCode ||
+                      !draft.licenseFileName ||
+                      !draft.degreeFileName
                     }
                     onClick={submitApplication}
                   >
@@ -604,7 +680,7 @@ export function VetApplicationWizard() {
                   </Button>
                 ) : (
                   <Button
-                    className="sm:min-w-32"
+                    className="w-full sm:min-w-40"
                     disabled={saveState === "saving"}
                     onClick={goNext}
                   >
