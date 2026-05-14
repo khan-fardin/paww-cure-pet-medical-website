@@ -96,8 +96,6 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     // TODO: Check for duplicate microchipId if provided
-    // TODO: Validate species-specific breed combinations
-
     const pet = await Pet.create({
       userId: payload.userId,
       name: parsed.data.name,
@@ -122,6 +120,19 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("[pets] POST error:", error);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { success: false, message: "This pet information is already registered" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to create pet" },
       { status: 500 }

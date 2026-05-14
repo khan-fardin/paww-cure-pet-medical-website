@@ -125,14 +125,7 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    const existingUser = await VetProfile.findOne({ email: parsed.data.email });
-    if (existingUser) {
-      return NextResponse.json(
-        { success: false, message: "Email already registered" },
-        { status: 409 }
-      );
-    }
-
+    // Check for duplicate license number
     const existingLicense = await VetProfile.findOne({
       licenseNumber: parsed.data.licenseNumber,
     });
@@ -143,48 +136,94 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const passwordHash = await hashPassword(parsed.data.password);
-    const user = await User.create({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      passwordHash,
-      phone: parsed.data.phone,
-      role: "vet",
-    });
+    // Find or create User
+    let user = await User.findOne({ email: parsed.data.email });
 
-    const profile = await VetProfile.create({
-      userId: user._id,
-      licenseNumber: parsed.data.licenseNumber,
-      issuingAuthority: parsed.data.issuingAuthority,
-      licenseExpiryDate: parsed.data.expiryDate
-        ? new Date(parsed.data.expiryDate)
-        : undefined,
-      specializations: parsed.data.specialties,
-      languages: parsed.data.languages
-        ? parsed.data.languages
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean)
-        : [],
-      experience: parsed.data.experience,
-      bio: parsed.data.bio,
-      clinicName: parsed.data.clinicName,
-      clinicAddress: parsed.data.clinicAddress,
-      clinicCity: parsed.data.clinicCity,
-      clinicProvince: parsed.data.clinicProvince,
-      clinicPostalCode: parsed.data.clinicPostalCode,
-      phoneNumber: parsed.data.phone ?? "",
-      servicesOffered: parsed.data.specialties,
-      consultationFee: parsed.data.consultFee,
-      consultationDuration: 30,
-      isVerified: false,
-      applicationStatus: "submitted",
-      licenseDocumentName: parsed.data.licenseFileName,
-      degreeDocumentName: parsed.data.degreeFileName,
-      isActive: true,
-      acceptingNewPatients: false,
-      availability: [],
-    });
+    if (!user) {
+      // Create new User if doesn't exist
+      const passwordHash = await hashPassword(parsed.data.password);
+      try {
+        user = await User.create({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          passwordHash,
+          phone: parsed.data.phone,
+          role: "user", // New users default to "user"
+        });
+      } catch (err: unknown) {
+        // Handle MongoDB duplicate key error
+        if (
+          err instanceof Error &&
+          "code" in err &&
+          err.code === 11000
+        ) {
+          return NextResponse.json(
+            { success: false, message: "Email already registered" },
+            { status: 409 }
+          );
+        }
+        throw err;
+      }
+    } else {
+      // User already exists - check if they already have a vet profile
+      const existingVetProfile = await VetProfile.findOne({ userId: user._id });
+      if (existingVetProfile) {
+        return NextResponse.json(
+          { success: false, message: "You already have a vet application. Wait for admin review or contact support." },
+          { status: 409 }
+        );
+      }
+    }
+
+    let profile;
+    try {
+      profile = await VetProfile.create({
+        userId: user._id,
+        licenseNumber: parsed.data.licenseNumber,
+        issuingAuthority: parsed.data.issuingAuthority,
+        licenseExpiryDate: parsed.data.expiryDate
+          ? new Date(parsed.data.expiryDate)
+          : undefined,
+        specializations: parsed.data.specialties,
+        languages: parsed.data.languages
+          ? parsed.data.languages
+              .split(",")
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : [],
+        experience: parsed.data.experience,
+        bio: parsed.data.bio,
+        clinicName: parsed.data.clinicName,
+        clinicAddress: parsed.data.clinicAddress,
+        clinicCity: parsed.data.clinicCity,
+        clinicProvince: parsed.data.clinicProvince,
+        clinicPostalCode: parsed.data.clinicPostalCode,
+        phoneNumber: parsed.data.phone ?? "",
+        servicesOffered: parsed.data.specialties,
+        consultationFee: parsed.data.consultFee,
+        consultationDuration: 30,
+        isVerified: false,
+        applicationStatus: "submitted",
+        licenseDocumentName: parsed.data.licenseFileName,
+        degreeDocumentName: parsed.data.degreeFileName,
+        isActive: true,
+        acceptingNewPatients: false,
+        availability: [],
+      });
+    } catch (err: unknown) {
+      // Handle MongoDB duplicate key error
+      if (
+        err instanceof Error &&
+        "code" in err &&
+        err.code === 11000
+      ) {
+        return NextResponse.json(
+          { success: false, message: "License number already submitted" },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
 
     return NextResponse.json(
       {
@@ -196,6 +235,25 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("[vets] POST error:", error);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      const field = Object.keys(
+        (error as Record<string, unknown>).keyPattern || {}
+      )[0];
+      const message = field
+        ? `This ${field} is already registered`
+        : "Duplicate entry found";
+      return NextResponse.json(
+        { success: false, message },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to submit vet application" },
       { status: 500 }

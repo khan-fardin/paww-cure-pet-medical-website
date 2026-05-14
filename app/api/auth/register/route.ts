@@ -18,16 +18,15 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-  console.log(parsed.error.flatten());
-
-  return NextResponse.json(
-    {
-      success: false,
-      errors: parsed.error.flatten(),
-    },
-    { status: 400 }
-  );
-}
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Please provide valid information.",
+          errors: parsed.error.flatten(),
+        },
+        { status: 400 }
+      );
+    }
 
     await dbConnect();
 
@@ -41,13 +40,29 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await hashPassword(parsed.data.password);
 
-    const user = await User.create({
-      name: parsed.data.name,
-      email: parsed.data.email,
-      passwordHash,
-      phone: parsed.data.phone,
-      role: "user",
-    });
+    let user;
+    try {
+      user = await User.create({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        passwordHash,
+        phone: parsed.data.phone,
+        role: "user",
+      });
+    } catch (err: unknown) {
+      // Handle MongoDB duplicate key error
+      if (
+        err instanceof Error &&
+        "code" in err &&
+        err.code === 11000
+      ) {
+        return NextResponse.json(
+          { success: false, message: "Email already registered" },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
 
     const accessToken = await signToken(
       { userId: user._id.toString(), role: user.role },
@@ -65,7 +80,7 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: "Account created",
-        data: { name: user.name, email: user.email, role: user.role },
+        data: { name: user.name, email: user.email, role: user.role, redirectTo: "/dashboard" },
       },
       { status: 201 }
     );
@@ -74,7 +89,7 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 15, // 15 minutes
+      maxAge: 60 * 15,
       path: "/",
     });
 
@@ -82,15 +97,28 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
     return response;
   } catch (err) {
     console.error("[register]", err);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      err.code === 11000
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Email already registered" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      { success: false, message: "Registration failed" },
       { status: 500 }
     );
   }

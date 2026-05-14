@@ -120,6 +120,19 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("[reminders] POST error:", error);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { success: false, message: "This reminder already exists" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to create reminder" },
       { status: 500 }

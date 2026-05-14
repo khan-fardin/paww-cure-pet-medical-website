@@ -131,6 +131,19 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("[documents] POST error:", error);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      return NextResponse.json(
+        { success: false, message: "This document already exists" },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to upload document" },
       { status: 500 }

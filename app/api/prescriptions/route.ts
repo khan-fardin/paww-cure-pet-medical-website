@@ -139,6 +139,25 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("[prescriptions] POST error:", error);
+
+    // Check if it's a MongoDB duplicate key error
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      error.code === 11000
+    ) {
+      const field = Object.keys(
+        (error as Record<string, unknown>).keyPattern || {}
+      )[0];
+      const message = field === "consultationId"
+        ? "A prescription for this consultation already exists"
+        : "This prescription already exists";
+      return NextResponse.json(
+        { success: false, message },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to create prescription" },
       { status: 500 }

@@ -26,6 +26,7 @@ const PrescriptionSchema = new Schema<IPrescription>(
       type: Schema.Types.ObjectId,
       ref: "Consultation",
       required: true,
+      unique: true,
     },
     petId: {
       type: Schema.Types.ObjectId,
