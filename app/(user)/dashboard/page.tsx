@@ -7,10 +7,10 @@ import { CalendarDays, FileText, PawPrint, Stethoscope, Loader, AlertCircle } fr
 import { usePets } from "@/lib/hooks/usePets";
 import { useConsultations } from "@/lib/hooks/useConsultations";
 import { useReminders } from "@/lib/hooks/useReminders";
+import { useDocuments } from "@/lib/hooks/useDocuments";
 import { demoVets } from "@/lib/demo/publicContent";
 import {
   dashboardTimeline,
-  demoDocuments,
 } from "@/lib/demo/userContent";
 
 function Card({
@@ -33,6 +33,7 @@ export default function UserDashboardPage() {
   const { pets, loading: petsLoading, error: petsError } = usePets();
   const { consultations, loading: consultationsLoading, error: consultationsError } = useConsultations();
   const { reminders, loading: remindersLoading, error: remindersError } = useReminders();
+  const { documents, loading: documentsLoading, error: documentsError } = useDocuments();
 
   const activePet = pets[0];
   const upcomingConsultation = consultations.filter(c => c.status === "scheduled")[0];
@@ -61,7 +62,7 @@ export default function UserDashboardPage() {
       icon: FileText,
       label: "Documents",
       tone: "bg-slate-100 text-slate-600",
-      value: demoDocuments.length.toString(),
+      value: documents.length.toString(),
     },
   ] as const;
 
@@ -387,16 +388,16 @@ export default function UserDashboardPage() {
             </Link>
           </div>
           
-          {demoDocuments.length > 0 ? (
+          {documents.length > 0 ? (
             <div className="space-y-3">
-              {demoDocuments.slice(0, 3).map((document) => (
-                <div className="rounded-[2rem] bg-slate-50 p-5" key={document.id}>
+              {documents.slice(0, 3).map((document) => (
+                <div className="rounded-[2rem] bg-slate-50 p-5" key={document._id}>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {document.petName}
+                    {document.documentType}
                   </p>
-                  <p className="mt-2 font-bold">{document.label}</p>
+                  <p className="mt-2 font-bold">{document.fileName}</p>
                   <p className="mt-1 text-sm text-slate-400">
-                    {document.uploadedAt}
+                    {new Date(document.uploadedAt).toLocaleDateString()}
                   </p>
                 </div>
               ))}

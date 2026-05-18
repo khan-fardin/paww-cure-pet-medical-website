@@ -4,6 +4,7 @@ export interface IReview extends Document {
   consultationId: mongoose.Types.ObjectId;
   vetId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  ownerId: mongoose.Types.ObjectId; // alias for userId
   rating: number; // 1-5
   title: string;
   comment: string;
@@ -14,6 +15,8 @@ export interface IReview extends Document {
   isVerifiedPurchase: boolean;
   helpful: number; // count of helpful votes
   isVisible: boolean;
+  flagReason?: string;
+  flaggedBy?: string;
   response?: {
     vetResponse: string;
     respondedAt: Date;
@@ -50,6 +53,8 @@ const ReviewSchema = new Schema<IReview>(
     isVerifiedPurchase: { type: Boolean, default: true },
     helpful: { type: Number, default: 0, min: 0 },
     isVisible: { type: Boolean, default: true },
+    flagReason: String,
+    flaggedBy: String,
     response: {
       vetResponse: String,
       respondedAt: Date,

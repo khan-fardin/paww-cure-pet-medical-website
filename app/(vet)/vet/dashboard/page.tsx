@@ -9,39 +9,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import { demoVets } from "@/lib/demo/publicContent";
-import { demoConsultations } from "@/lib/demo/userContent";
+import { dbConnect } from "@/lib/db/connect";
+import { VetProfile } from "@/lib/db/models/VetProfile";
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Review } from "@/lib/db/models/Review";
+import { User } from "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Vet Dashboard | pawwcure",
 };
-
-const stats = [
-  {
-    icon: DollarSign,
-    label: "Today's Earnings",
-    tone: "bg-emerald-50 text-emerald-700",
-    value: "BDT 4,800",
-  },
-  {
-    icon: Clock,
-    label: "Upcoming Sessions",
-    tone: "bg-blue-50 text-blue-600",
-    value: "3",
-  },
-  {
-    icon: FileText,
-    label: "Pending Records",
-    tone: "bg-amber-50 text-amber-700",
-    value: "2",
-  },
-  {
-    icon: MessageSquare,
-    label: "Reviews",
-    tone: "bg-teal-50 text-teal-700",
-    value: "4.9★",
-  },
-] as const;
 
 function Card({
   children,
@@ -59,11 +35,125 @@ function Card({
   );
 }
 
-export default function VetDashboardPage() {
-  const currentVet = demoVets[0];
-  const todaysSessions = demoConsultations.filter(
-    (c) => c.status === "Confirmed"
-  );
+function formatBDT(value: number) {
+  return `BDT ${new Intl.NumberFormat("en-BD").format(value)}`;
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export default async function VetDashboardPage() {
+  await dbConnect();
+
+  const now = new Date();
+  const today = startOfDay(now);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  // Get current vet user from auth context
+  // For now, we'll fetch the first vet to demonstrate
+  const vetUser = await User.findOne({ role: "vet" });
+  
+  if (!vetUser) {
+    return (
+      <section className="space-y-8">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="text-red-900 font-bold">No vet profile found</p>
+        </div>
+      </section>
+    );
+  }
+
+  const vetProfile = await VetProfile.findOne({ userId: vetUser._id });
+
+  const [
+    todayConsultations,
+    totalEarnings,
+    pendingRecords,
+    averageRating,
+    consultations,
+    recentReviews,
+  ] = await Promise.all([
+    Consultation.countDocuments({
+      vetId: vetUser._id,
+      scheduledAt: { $gte: today, $lt: tomorrow },
+    }),
+    Consultation.aggregate([
+      {
+        $match: {
+          vetId: vetUser._id,
+          paymentStatus: "completed",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$fees.total" },
+        },
+      },
+    ]),
+    Consultation.countDocuments({
+      vetId: vetUser._id,
+      status: { $in: ["completed", "ongoing"] },
+    }),
+    Review.aggregate([
+      {
+        $match: {
+          vetId: vetUser._id,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          avg: { $avg: "$rating" },
+        },
+      },
+    ]),
+    Consultation.find({
+      vetId: vetUser._id,
+    })
+      .sort({ scheduledAt: -1 })
+      .limit(5),
+    Review.find({
+      vetId: vetUser._id,
+    })
+      .sort({ createdAt: -1 })
+      .limit(5),
+  ]);
+
+  const earnings = totalEarnings[0]?.total || 0;
+  const rating = averageRating[0]?.avg?.toFixed(1) || "0";
+  const upcomingCount = consultations.filter(
+    (c: any) => c.scheduledAt > now && c.status === "scheduled"
+  ).length;
+
+  const stats = [
+    {
+      icon: DollarSign,
+      label: "Today's Earnings",
+      tone: "bg-emerald-50 text-emerald-700",
+      value: formatBDT(earnings),
+    },
+    {
+      icon: Clock,
+      label: "Upcoming Sessions",
+      tone: "bg-blue-50 text-blue-600",
+      value: upcomingCount.toString(),
+    },
+    {
+      icon: FileText,
+      label: "Pending Records",
+      tone: "bg-amber-50 text-amber-700",
+      value: pendingRecords.toString(),
+    },
+    {
+      icon: MessageSquare,
+      label: "Reviews",
+      tone: "bg-teal-50 text-teal-700",
+      value: `${rating}★`,
+    },
+  ] as const;
 
   return (
     <section className="space-y-8">
@@ -74,7 +164,8 @@ export default function VetDashboardPage() {
               Vet dashboard
             </div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Hi {currentVet.name.split(" ")[1]}, you have 3 sessions today.
+              Hi {vetUser.name.split(" ")[0]}, you have {upcomingCount} sessions
+              today.
             </h1>
             <p className="mt-5 max-w-xl leading-relaxed text-teal-100/70">
               Review your schedule, pending patient notes, recent reviews, and
@@ -98,187 +189,103 @@ export default function VetDashboardPage() {
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
               <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-teal-100/70">
-                  Next session
+                  Clinic
                 </p>
-                <p className="mt-1 text-xl font-bold">Today, 7:30 PM</p>
+                <p className="mt-1 text-xl font-bold">
+                  {vetProfile?.clinicName || "Not set"}
+                </p>
               </div>
               <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-teal-100/70">
-                  Patient
+                  Phone
                 </p>
-                <p className="mt-1 text-xl font-bold">Luna (Cat)</p>
+                <p className="mt-1 text-xl font-bold">
+                  {vetProfile?.phoneNumber || "Not set"}
+                </p>
               </div>
             </div>
           </div>
-          <div className="absolute -right-12 -top-12 h-64 w-64 rounded-full bg-teal-600/25 blur-[100px]" />
         </div>
 
-        <Card className="overflow-hidden p-0">
-          <div className="relative h-64">
-            <Image
-              alt={currentVet.name}
-              className="object-cover"
-              fill
-              priority
-              sizes="(min-width: 1280px) 35vw, 100vw"
-              src={currentVet.avatar}
-            />
-          </div>
-          <div className="p-7">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Vet profile
-                </p>
-                <h2 className="mt-1 text-3xl font-bold">{currentVet.name}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-400">
-                  {currentVet.yearsExperience} years experience
-                </p>
-              </div>
-              <Link
-                className="rounded-full bg-teal-50 px-4 py-2 text-sm font-bold text-teal-700"
-                href="/vet/profile"
-              >
-                Edit
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {currentVet.specialties.map((specialty) => (
-                <span
-                  className="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-teal-700"
-                  key={specialty}
-                >
-                  {specialty}
-                </span>
-              ))}
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-
-          return (
-            <div
-              className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm"
-              key={stat.label}
-            >
-              <div
-                className={`mb-5 flex h-10 w-10 items-center justify-center rounded-2xl ${stat.tone}`}
-              >
-                <Icon aria-hidden="true" className="h-5 w-5" />
-              </div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                {stat.label}
-              </p>
-              <p className="mt-1 text-3xl font-bold">{stat.value}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card>
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Today&apos;s schedule
-              </p>
-              <h2 className="mt-1 text-2xl font-bold">
-                {todaysSessions.length} confirmed sessions
-              </h2>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            {todaysSessions.map((session) => (
-              <div
-                className="rounded-[2rem] border border-slate-100 p-5"
-                key={session.id}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      {session.scheduledAt}
-                    </p>
-                    <p className="mt-2 font-bold">{session.petName}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {session.type} consultation
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-teal-700">
-                    {session.type}
-                  </span>
+        <div className="flex flex-col gap-5">
+          {stats.map(({ icon: Icon, label, tone, value }, i) => (
+            <Card key={i}>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase">
+                    {label}
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {value}
+                  </p>
                 </div>
-                <Link
-                  className="mt-4 inline-block rounded-2xl bg-teal-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-teal-700"
-                  href={session.href}
+                <div className={`rounded-full p-4 ${tone}`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h3 className="text-lg font-bold text-slate-900">
+              Upcoming Sessions
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {consultations.slice(0, 5).map((consultation: any) => (
+              <div
+                key={consultation._id}
+                className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0"
+              >
+                <div>
+                  <p className="font-semibold text-slate-900">
+                    {consultation.type}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {new Date(consultation.scheduledAt).toLocaleString()}
+                  </p>
+                </div>
+                <div
+                  className={`text-sm font-bold px-3 py-1 rounded-full ${
+                    consultation.status === "scheduled"
+                      ? "bg-blue-100 text-blue-700"
+                      : consultation.status === "completed"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-700"
+                  }`}
                 >
-                  Join Session
-                </Link>
+                  {consultation.status}
+                </div>
               </div>
             ))}
           </div>
-
-          <div className="mt-6">
-            <Link
-              className="inline-flex justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-600 w-full"
-              href="/vet/consultations"
-            >
-              View All Consultations
-            </Link>
-          </div>
         </Card>
 
         <Card>
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Earnings
-              </p>
-              <h2 className="mt-1 text-2xl font-bold">This Week</h2>
-            </div>
-            <Link
-              className="text-sm font-bold text-teal-600"
-              href="/vet/earnings"
-            >
-              Details
-            </Link>
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h3 className="text-lg font-bold text-slate-900">
+              Recent Reviews
+            </h3>
           </div>
-
           <div className="space-y-4">
-            <div className="rounded-[2rem] bg-slate-50 p-5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Total earned
-              </p>
-              <p className="mt-2 text-3xl font-bold">BDT 24,200</p>
-              <p className="mt-2 flex items-center gap-2 text-sm font-bold text-emerald-700">
-                <TrendingUp className="h-4 w-4" />
-                +12% vs last week
-              </p>
-            </div>
-            <div className="rounded-[2rem] bg-slate-50 p-5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Pending payout
-              </p>
-              <p className="mt-2 text-2xl font-bold">BDT 12,100</p>
-            </div>
-            <div className="rounded-[2rem] bg-slate-50 p-5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Payout scheduled
-              </p>
-              <p className="mt-2 font-bold">May 10, 2026</p>
-            </div>
+            {recentReviews.slice(0, 5).map((review: any) => (
+              <div
+                key={review._id}
+                className="border-b border-slate-100 pb-4 last:border-0"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-yellow-400">★</span>
+                  <span className="font-bold text-slate-900">{review.rating}</span>
+                  <span className="text-sm text-slate-500">({review.title})</span>
+                </div>
+                <p className="text-sm text-slate-600 mt-2">{review.comment}</p>
+              </div>
+            ))}
           </div>
-
-          <Link
-            className="mt-6 inline-flex justify-center rounded-2xl bg-teal-600 px-5 py-3 text-sm font-bold text-white w-full transition hover:bg-teal-700"
-            href="/vet/earnings"
-          >
-            Request Payout
-          </Link>
         </Card>
       </div>
     </section>

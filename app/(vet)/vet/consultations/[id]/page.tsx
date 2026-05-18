@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
+
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Pet } from "@/lib/db/models/Pet";
+import { User } from "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Consultation Details | pawwcure",
@@ -21,17 +28,89 @@ function Card({
   );
 }
 
-export default function ConsultationDetailsPage({
+function getStatusColor(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-50 text-emerald-700";
+    case "scheduled":
+      return "bg-blue-50 text-blue-700";
+    case "ongoing":
+      return "bg-yellow-50 text-yellow-700";
+    case "cancelled":
+      return "bg-red-50 text-red-700";
+    default:
+      return "bg-slate-50 text-slate-700";
+  }
+}
+
+function formatDate(date: Date | undefined): string {
+  if (!date) return "Not set";
+  return new Date(date).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function calculateAge(dateOfBirth: Date): string {
+  const today = new Date();
+  let age = today.getFullYear() - dateOfBirth.getFullYear();
+  const monthDiff = today.getMonth() - dateOfBirth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateOfBirth.getDate())) {
+    age--;
+  }
+  return `${age} year${age !== 1 ? "s" : ""}`;
+}
+
+type ConsultationDetailsPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function ConsultationDetailsPage({
   params,
-}: {
-  params: { id: string };
-}) {
+}: ConsultationDetailsPageProps) {
+  const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
+  const { id } = await params;
+
+  // Verify auth
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+
+  let vetUserId = null;
+  if (token) {
+    try {
+      const verified = await jwtVerify(token, JWT_SECRET);
+      vetUserId = verified.payload.userId as string;
+    } catch {
+      notFound();
+    }
+  } else {
+    notFound();
+  }
+
+  // Fetch consultation
+  const consultation = await Consultation.findById(id)
+    .populate("petId")
+    .populate("userId", "name email")
+    .lean();
+
+  if (!consultation || consultation.vetId?.toString() !== vetUserId) {
+    notFound();
+  }
+
+  const pet = consultation.petId as any;
+  const user = consultation.userId as any;
+  const age = pet?.dateOfBirth ? calculateAge(new Date(pet.dateOfBirth)) : "Unknown";
+
   return (
     <section className="space-y-8">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Consultation Details</h1>
-          <p className="mt-2 text-slate-500">ID: {params.id}</p>
+          <p className="mt-2 text-slate-500">ID: {id}</p>
         </div>
         <Link
           className="rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700"
@@ -50,21 +129,27 @@ export default function ConsultationDetailsPage({
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Date & Time
                 </p>
-                <p className="mt-2 text-lg font-bold">Today, 7:30 PM</p>
+                <p className="mt-2 text-lg font-bold">{formatDate(consultation.scheduledAt)}</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Type
                 </p>
-                <p className="mt-2 text-lg font-bold">Video Consultation</p>
+                <p className="mt-2 text-lg font-bold capitalize">{consultation.type} Consultation</p>
               </div>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Status
                 </p>
-                <span className="mt-2 inline-block rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700">
-                  Completed
+                <span className={`mt-2 inline-block rounded-full px-3 py-1 text-sm font-bold ${getStatusColor(consultation.status)}`}>
+                  {consultation.status.charAt(0).toUpperCase() + consultation.status.slice(1)}
                 </span>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Fee (BDT)
+                </p>
+                <p className="mt-2 text-lg font-bold">{consultation.fees.total}</p>
               </div>
             </div>
           </Card>
@@ -72,46 +157,41 @@ export default function ConsultationDetailsPage({
           <Card>
             <h2 className="text-2xl font-bold mb-4">Patient Record</h2>
             <div className="space-y-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Diagnosis
-                </p>
-                <p className="mt-2 text-slate-700">
-                  Mild digestive upset due to dietary sensitivity. Recommend
-                  switching to sensitive stomach formula and probiotic supplement.
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Symptoms
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {["Vomiting", "Loss of appetite"].map((symptom) => (
-                    <span
-                      className="rounded-full bg-slate-100 px-3 py-1 text-sm font-bold text-slate-700"
-                      key={symptom}
-                    >
-                      {symptom}
-                    </span>
-                  ))}
+              {consultation.diagnosis && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Diagnosis
+                  </p>
+                  <p className="mt-2 text-slate-700">{consultation.diagnosis}</p>
                 </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Follow-up Date
-                </p>
-                <p className="mt-2 font-bold">May 10, 2026</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <h2 className="text-2xl font-bold mb-4">Prescriptions</h2>
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-slate-100 p-4">
-                <p className="font-bold">Probiotics Sachet</p>
-                <p className="mt-1 text-sm text-slate-600">1 sachet daily • 7 days</p>
-              </div>
+              )}
+              {consultation.notes && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Notes
+                  </p>
+                  <p className="mt-2 text-slate-700">{consultation.notes}</p>
+                </div>
+              )}
+              {consultation.treatmentPlan && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Treatment Plan
+                  </p>
+                  <p className="mt-2 text-slate-700">{consultation.treatmentPlan}</p>
+                </div>
+              )}
+              {consultation.followUpDueDate && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Follow-up Date
+                  </p>
+                  <p className="mt-2 font-bold">{formatDate(consultation.followUpDueDate)}</p>
+                </div>
+              )}
+              {!consultation.diagnosis && !consultation.notes && (
+                <p className="text-slate-500">No patient record yet</p>
+              )}
             </div>
           </Card>
         </div>
@@ -122,23 +202,31 @@ export default function ConsultationDetailsPage({
             <div className="space-y-4 text-sm">
               <div>
                 <p className="font-bold text-slate-900">Pet Name</p>
-                <p className="mt-1 text-slate-600">Luna</p>
+                <p className="mt-1 text-slate-600">{pet?.name || "Unknown"}</p>
               </div>
               <div>
                 <p className="font-bold text-slate-900">Species</p>
-                <p className="mt-1 text-slate-600">Cat</p>
+                <p className="mt-1 text-slate-600 capitalize">{pet?.species || "Unknown"}</p>
               </div>
               <div>
                 <p className="font-bold text-slate-900">Breed</p>
-                <p className="mt-1 text-slate-600">Persian</p>
+                <p className="mt-1 text-slate-600">{pet?.breed || "Unknown"}</p>
               </div>
               <div>
                 <p className="font-bold text-slate-900">Age</p>
-                <p className="mt-1 text-slate-600">3 years</p>
+                <p className="mt-1 text-slate-600">{age}</p>
               </div>
               <div>
-                <p className="font-bold text-slate-900">User</p>
-                <p className="mt-1 text-slate-600">Nadia Chowdhury</p>
+                <p className="font-bold text-slate-900">Weight</p>
+                <p className="mt-1 text-slate-600">{pet?.weight || "Unknown"} kg</p>
+              </div>
+              <div className="pt-4 border-t border-slate-100">
+                <p className="font-bold text-slate-900">Owner</p>
+                <p className="mt-1 text-slate-600">{user?.name || "Unknown"}</p>
+              </div>
+              <div>
+                <p className="font-bold text-slate-900">Email</p>
+                <p className="mt-1 text-slate-600 text-xs break-all">{user?.email || "Unknown"}</p>
               </div>
             </div>
           </Card>
