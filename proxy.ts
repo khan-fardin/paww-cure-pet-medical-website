@@ -10,7 +10,12 @@ const PUBLIC_PATHS = [
   "/forgot-password",
 ];
 
-const SHARED_AUTHENTICATED = ["/consultation", "/settings", "/notifications"];
+const SHARED_AUTHENTICATED = [
+  "/consultation",
+  "/settings",
+  "/notifications",
+  "/vets",
+];
 
 const ROLE_PREFIXES: Record<string, string[]> = {
   user: ["/dashboard", "/pets", "/book",

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { AlertCircle, Loader } from "lucide-react";
 
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/Input";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
@@ -36,8 +37,13 @@ export function LoginForm() {
         return;
       }
 
-      // Success - redirect
-      router.push(data.data.redirectTo || "/dashboard");
+      const returnUrl = searchParams.get("returnUrl");
+      const safeReturnUrl =
+        returnUrl && returnUrl.startsWith("/") && !returnUrl.startsWith("//")
+          ? returnUrl
+          : null;
+
+      router.push(safeReturnUrl || data.data.redirectTo || "/dashboard");
     } catch (err) {
       setError("Network error. Please try again.");
       setLoading(false);

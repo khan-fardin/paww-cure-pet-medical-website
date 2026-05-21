@@ -8,17 +8,16 @@ const createPetSchema = z.object({
   name: z.string().min(1).max(50),
   species: z.enum(["dog", "cat", "rabbit", "bird", "other"]),
   breed: z.string().min(1).max(50),
-  weight: z.number().positive(),
-  dateOfBirth: z.string().datetime(),
-  avatar: z.string().optional(),
-  microchipId: z.string().optional(),
+  weight: z.coerce.number().positive(),
+  dateOfBirth: z.string().refine((value) => !Number.isNaN(Date.parse(value)), {
+    message: "Enter a valid date of birth",
+  }),
+  avatar: z.string().url().optional(),
+  microchipId: z.string().trim().optional(),
   medicalConditions: z.array(z.string()).optional(),
   allergies: z.array(z.string()).optional(),
   medications: z.array(z.string()).optional(),
 });
-
-// TODO: Implement file upload for avatar
-// TODO: Implement validation for microchipId uniqueness
 
 export async function GET(req: NextRequest) {
   try {
@@ -95,7 +94,6 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // TODO: Check for duplicate microchipId if provided
     const pet = await Pet.create({
       userId: payload.userId,
       name: parsed.data.name,
@@ -104,7 +102,7 @@ export async function POST(req: NextRequest) {
       weight: parsed.data.weight,
       dateOfBirth: new Date(parsed.data.dateOfBirth),
       avatar: parsed.data.avatar,
-      microchipId: parsed.data.microchipId,
+      microchipId: parsed.data.microchipId || undefined,
       medicalConditions: parsed.data.medicalConditions || [],
       allergies: parsed.data.allergies || [],
       medications: parsed.data.medications || [],

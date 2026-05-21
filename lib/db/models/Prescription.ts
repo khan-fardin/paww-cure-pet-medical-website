@@ -57,7 +57,6 @@ const PrescriptionSchema = new Schema<IPrescription>(
 );
 
 // Indices for common queries
-PrescriptionSchema.index({ consultationId: 1 });
 PrescriptionSchema.index({ petId: 1 });
 PrescriptionSchema.index({ vetId: 1 });
 PrescriptionSchema.index({ expiryDate: 1 });
