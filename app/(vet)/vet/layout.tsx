@@ -17,6 +17,10 @@ export default async function VetLayout({
     redirect("/login?returnUrl=/vet/dashboard");
   }
 
+  if (session.role !== "vet") {
+    redirect("/dashboard");
+  }
+
   await dbConnect();
   const [user, profile] = await Promise.all([
     User.findById(session.userId).select("name avatar").lean(),

@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth/jwt";
+
+import { signToken, verifyToken, type TokenPayload } from "@/lib/auth/jwt";
 
 const PUBLIC_PATHS = [
   "/",
-  "/vets", 
+  "/vets",
   "/login",
   "/register",
   "/apply-as-vet",
@@ -17,25 +18,91 @@ const SHARED_AUTHENTICATED = [
   "/vets",
 ];
 
-const ROLE_PREFIXES: Record<string, string[]> = {
-  user: ["/dashboard", "/pets", "/book",
-          "/consultations", "/documents", "/reminders", "/payments"],
-  vet:   ["/vet"],
-  mod:   ["/mod"],
+const ROLE_PREFIXES: Record<TokenPayload["role"], string[]> = {
+  user: [
+    "/dashboard",
+    "/pets",
+    "/book",
+    "/consultations",
+    "/documents",
+    "/reminders",
+    "/payments",
+  ],
+  vet: ["/vet"],
+  mod: ["/mod"],
   admin: ["/admin"],
 };
 
-const ROLE_HOME: Record<string, string> = {
+const ROLE_HOME: Record<TokenPayload["role"], string> = {
   user: "/dashboard",
-  vet:   "/vet/dashboard",
-  mod:   "/mod/dashboard",
+  vet: "/vet/dashboard",
+  mod: "/mod/dashboard",
   admin: "/admin/dashboard",
 };
+
+function loginRedirect(req: NextRequest) {
+  const loginUrl = new URL("/login", req.url);
+  loginUrl.searchParams.set("returnUrl", req.nextUrl.pathname);
+  return NextResponse.redirect(loginUrl);
+}
+
+function isAllowedPath(pathname: string, payload: TokenPayload) {
+  if (SHARED_AUTHENTICATED.some((path) => pathname.startsWith(path))) {
+    return true;
+  }
+
+  return ROLE_PREFIXES[payload.role].some((path) => pathname.startsWith(path));
+}
+
+function shouldRedirectUnverifiedVet(pathname: string, payload: TokenPayload) {
+  return (
+    payload.role === "vet" &&
+    !payload.isVerified &&
+    !pathname.startsWith("/vet/profile")
+  );
+}
+
+async function nextWithRefreshedAccess(payload: TokenPayload) {
+  const response = NextResponse.next();
+  const accessToken = await signToken(
+    {
+      userId: payload.userId,
+      role: payload.role,
+      ...(payload.role === "vet"
+        ? { isVerified: Boolean(payload.isVerified) }
+        : {}),
+    },
+    "15m"
+  );
+
+  response.cookies.set("access_token", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 15,
+    path: "/",
+  });
+
+  return response;
+}
+
+function redirectForPayload(req: NextRequest, payload: TokenPayload) {
+  const { pathname } = req.nextUrl;
+
+  if (!isAllowedPath(pathname, payload)) {
+    return NextResponse.redirect(new URL(ROLE_HOME[payload.role], req.url));
+  }
+
+  if (shouldRedirectUnverifiedVet(pathname, payload)) {
+    return NextResponse.redirect(new URL("/vet/profile", req.url));
+  }
+
+  return null;
+}
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Always allow public paths, API routes, static files
   if (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith("/articles") ||
@@ -46,53 +113,41 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get("access_token")?.value;
+  const accessToken = req.cookies.get("access_token")?.value;
+  const refreshToken = req.cookies.get("refresh_token")?.value;
 
-  if (!token) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("returnUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+  if (accessToken) {
+    try {
+      const payload = await verifyToken(accessToken);
+      return redirectForPayload(req, payload) ?? NextResponse.next();
+    } catch {
+      // Try the refresh token below.
+    }
+  }
+
+  if (!refreshToken) {
+    const response = loginRedirect(req);
+    response.cookies.delete("access_token");
+    return response;
   }
 
   try {
-    const payload = await verifyToken(token);
-    const role = payload.role;
+    const payload = await verifyToken(refreshToken);
+    const redirectResponse = redirectForPayload(req, payload);
 
-    // Shared routes — any authenticated role can access
-    if (SHARED_AUTHENTICATED.some((p) => pathname.startsWith(p))) {
-      return NextResponse.next();
+    if (redirectResponse) {
+      return redirectResponse;
     }
 
-    // Check role matches route prefix
-    const allowed = ROLE_PREFIXES[role] ?? [];
-    const isAllowed = allowed.some((p) => pathname.startsWith(p));
-
-    if (!isAllowed) {
-      return NextResponse.redirect(
-        new URL(ROLE_HOME[role] ?? "/login", req.url)
-      );
-    }
-
-    // Unverified vets can only access /vet/profile
-    if (
-      role === "vet" &&
-      !payload.isVerified &&
-      !pathname.startsWith("/vet/profile")
-    ) {
-      return NextResponse.redirect(new URL("/vet/profile", req.url));
-    }
-
-    return NextResponse.next();
+    return nextWithRefreshedAccess(payload);
   } catch {
-    // Token expired or invalid — clear cookie and redirect
-    const response = NextResponse.redirect(new URL("/login", req.url));
+    const response = loginRedirect(req);
     response.cookies.delete("access_token");
+    response.cookies.delete("refresh_token");
     return response;
   }
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
 };

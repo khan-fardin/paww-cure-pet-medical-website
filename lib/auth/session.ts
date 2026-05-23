@@ -3,11 +3,21 @@ import { verifyToken, type TokenPayload } from "./jwt";
 
 export async function getSession(): Promise<TokenPayload | null> {
   try {
-    // In Next.js 15+ cookies() is async
     const cookieStore = await cookies();
     const token = cookieStore.get("access_token")?.value;
-    if (!token) return null;
-    return await verifyToken(token);
+    const refreshToken = cookieStore.get("refresh_token")?.value;
+
+    if (token) {
+      try {
+        return await verifyToken(token);
+      } catch {
+        // Fall through to refresh token so server layouts do not log out users
+        // just because the short access token expired.
+      }
+    }
+
+    if (!refreshToken) return null;
+    return await verifyToken(refreshToken);
   } catch {
     return null;
   }

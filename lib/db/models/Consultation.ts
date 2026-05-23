@@ -20,6 +20,8 @@ export interface IConsultation extends Document {
   };
   paymentStatus: "pending" | "completed" | "failed" | "refunded";
   transactionId?: string;
+  dailyRoomName?: string;
+  dailyRoomUrl?: string;
   recordingUrl?: string;
   isFollowUp: boolean;
   followUpDueDate?: Date;
@@ -72,6 +74,8 @@ const ConsultationSchema = new Schema<IConsultation>(
       default: "pending",
     },
     transactionId: String,
+    dailyRoomName: String,
+    dailyRoomUrl: String,
     recordingUrl: String,
     isFollowUp: { type: Boolean, default: false },
     followUpDueDate: Date,

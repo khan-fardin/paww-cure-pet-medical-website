@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock } from "lucide-react";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
 import { redirect } from "next/navigation";
 
-import { User } from "@/lib/db/models/User";
+import { getSession } from "@/lib/auth/session";
+import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { Pet } from "@/lib/db/models/Pet";
+import "@/lib/db/models/Pet";
+import "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "My Consultations | pawwcure",
@@ -40,30 +40,20 @@ function formatDate(date: Date): string {
 }
 
 export default async function VetConsultationsPage() {
-  const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
+  const session = await getSession();
 
-  // Get current vet from token
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-
-  if (!token) {
-    redirect("/login");
+  if (!session) {
+    redirect("/login?returnUrl=/vet/consultations");
   }
 
-  let vetUserId = null;
-  try {
-    const verified = await jwtVerify(token, JWT_SECRET);
-    if (verified.payload.role !== "vet") {
-      redirect("/unauthorized");
-    }
-    vetUserId = verified.payload.userId as string;
-  } catch {
-    redirect("/login");
+  if (session.role !== "vet") {
+    redirect("/dashboard");
   }
 
-  // Fetch all consultations for this vet
+  await dbConnect();
+
   const consultations = await Consultation.find({
-    vetId: vetUserId,
+    vetId: session.userId,
   })
     .populate("petId", "name species breed")
     .populate("userId", "name email")

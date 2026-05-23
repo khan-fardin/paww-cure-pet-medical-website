@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { notFound, redirect } from "next/navigation";
 
+import { getSession } from "@/lib/auth/session";
+import { StartVetCallButton } from "@/components/vet/StartVetCallButton";
+import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { Pet } from "@/lib/db/models/Pet";
-import { User } from "@/lib/db/models/User";
+import "@/lib/db/models/Pet";
+import "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Consultation Details | pawwcure",
@@ -72,32 +73,25 @@ type ConsultationDetailsPageProps = {
 export default async function ConsultationDetailsPage({
   params,
 }: ConsultationDetailsPageProps) {
-  const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "");
   const { id } = await params;
+  const session = await getSession();
 
-  // Verify auth
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-
-  let vetUserId = null;
-  if (token) {
-    try {
-      const verified = await jwtVerify(token, JWT_SECRET);
-      vetUserId = verified.payload.userId as string;
-    } catch {
-      notFound();
-    }
-  } else {
-    notFound();
+  if (!session) {
+    redirect(`/login?returnUrl=/vet/consultations/${id}`);
   }
 
-  // Fetch consultation
+  if (session.role !== "vet") {
+    redirect("/dashboard");
+  }
+
+  await dbConnect();
+
   const consultation = await Consultation.findById(id)
     .populate("petId")
     .populate("userId", "name email")
     .lean();
 
-  if (!consultation || consultation.vetId?.toString() !== vetUserId) {
+  if (!consultation || consultation.vetId?.toString() !== session.userId) {
     notFound();
   }
 
@@ -112,12 +106,20 @@ export default async function ConsultationDetailsPage({
           <h1 className="text-3xl font-bold">Consultation Details</h1>
           <p className="mt-2 text-slate-500">ID: {id}</p>
         </div>
-        <Link
-          className="rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700"
-          href="/vet/consultations"
-        >
-          Back to Consultations
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {consultation.status !== "completed" ? (
+            <StartVetCallButton
+              consultationId={id}
+              disabled={consultation.paymentStatus !== "completed"}
+            />
+          ) : null}
+          <Link
+            className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-6 py-3 font-bold text-slate-600 transition hover:bg-slate-50"
+            href="/vet/consultations"
+          >
+            Back
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -221,7 +223,7 @@ export default async function ConsultationDetailsPage({
                 <p className="mt-1 text-slate-600">{pet?.weight || "Unknown"} kg</p>
               </div>
               <div className="pt-4 border-t border-slate-100">
-                <p className="font-bold text-slate-900">Owner</p>
+                <p className="font-bold text-slate-900">User</p>
                 <p className="mt-1 text-slate-600">{user?.name || "Unknown"}</p>
               </div>
               <div>

@@ -106,7 +106,11 @@ export default function UserDashboardPage() {
               {upcomingConsultation ? (
                 <Link
                   className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-emerald-950 shadow-xl shadow-black/10 transition hover:scale-[1.02] active:scale-95"
-                  href={`/consultations/${upcomingConsultation._id}`}
+                  href={
+                    upcomingConsultation.status === "scheduled"
+                      ? `/consultation/${upcomingConsultation._id}/waiting`
+                      : `/consultation/${upcomingConsultation._id}`
+                  }
                 >
                   View Upcoming
                 </Link>
@@ -281,7 +285,11 @@ export default function UserDashboardPage() {
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   className="inline-flex flex-1 justify-center rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
-                  href={`/consultations/${upcomingConsultation._id}`}
+                  href={
+                    upcomingConsultation.status === "scheduled"
+                      ? `/consultation/${upcomingConsultation._id}/waiting`
+                      : `/consultation/${upcomingConsultation._id}`
+                  }
                 >
                   View Details
                 </Link>

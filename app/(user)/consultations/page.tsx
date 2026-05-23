@@ -80,7 +80,11 @@ export default function ConsultationsPage() {
           {consultations.map((consultation) => (
             <Link
               className="grid gap-4 rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] md:grid-cols-[1fr_1fr_auto]"
-              href={`/consultations/${consultation._id}`}
+              href={
+                consultation.status === "scheduled"
+                  ? `/consultation/${consultation._id}/waiting`
+                  : `/consultation/${consultation._id}`
+              }
               key={consultation._id}
             >
               <div>
