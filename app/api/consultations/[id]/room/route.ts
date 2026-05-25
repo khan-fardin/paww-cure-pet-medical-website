@@ -8,9 +8,9 @@ import { Notification } from "@/lib/db/models/Notification";
 import "@/lib/db/models/Pet";
 import "@/lib/db/models/User";
 import {
-  createDailyMeetingToken,
-  createDailyRoom,
-} from "@/lib/services/daily.service";
+  createAgoraChannelName,
+  createAgoraRtcToken,
+} from "@/lib/services/agora.service";
 
 type PopulatedUser = {
   _id: { toString(): string };
@@ -86,17 +86,17 @@ async function getOrCreateRoom(
       );
     }
 
-    if (isUser && !consultation.dailyRoomName && !consultation.dailyRoomUrl) {
+    if (isUser && !consultation.agoraChannelName) {
       return NextResponse.json(
         { success: false, message: "Your vet has not started the call yet" },
         { status: 409 }
       );
     }
 
-    if (!consultation.dailyRoomName || !consultation.dailyRoomUrl) {
-      const room = await createDailyRoom(consultation._id.toString());
-      consultation.dailyRoomName = room.name;
-      consultation.dailyRoomUrl = room.url;
+    if (!consultation.agoraChannelName) {
+      consultation.agoraChannelName = createAgoraChannelName(
+        consultation._id.toString()
+      );
       await consultation.save();
     }
 
@@ -121,21 +121,22 @@ async function getOrCreateRoom(
     const displayName =
       (isVet ? vet.name : user.name) ??
       (isVet ? "pawwcure vet" : "pawwcure user");
-    const token = await createDailyMeetingToken({
-      isOwner: isVet || isStaff,
-      roomName: consultation.dailyRoomName,
+    const agora = createAgoraRtcToken({
+      channelName: consultation.agoraChannelName,
       userId: session.userId,
-      userName: displayName,
     });
 
     return NextResponse.json({
       success: true,
       data: {
+        appId: agora.appId,
+        channelName: agora.channelName,
         consultationId: consultation._id.toString(),
+        expiresAt: agora.expiresAt,
+        displayName,
         role: isVet ? "vet" : "user",
-        roomName: consultation.dailyRoomName,
-        roomUrl: consultation.dailyRoomUrl,
-        token,
+        token: agora.token,
+        uid: agora.uid,
       },
     });
   } catch (error) {

@@ -6,16 +6,36 @@ import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
 import { Notification } from "@/lib/db/models/Notification";
+import { Prescription } from "@/lib/db/models/Prescription";
 
 const recordSchema = z.object({
   diagnosis: z.string().min(2),
+  dietRecommendations: z.string().optional(),
+  expiryDate: z
+    .string()
+    .optional()
+    .refine((value) => !value || !Number.isNaN(Date.parse(value)), {
+      message: "Invalid prescription expiry date",
+    }),
   followUpDueDate: z
     .string()
     .optional()
     .refine((value) => !value || !Number.isNaN(Date.parse(value)), {
       message: "Invalid follow-up date",
     }),
+  medications: z
+    .array(
+      z.object({
+        dosage: z.string().min(1),
+        duration: z.string().min(1),
+        frequency: z.string().min(1),
+        instructions: z.string().optional(),
+        name: z.string().min(1),
+      })
+    )
+    .optional(),
   notes: z.string().optional(),
+  precautions: z.array(z.string()).optional(),
   treatmentPlan: z.string().min(2),
 });
 
@@ -91,16 +111,44 @@ export async function POST(
       ? new Date(parsed.data.followUpDueDate)
       : undefined;
 
-    await Promise.all([
-      consultation.save(),
+    const prescriptionPayload =
+      parsed.data.medications && parsed.data.medications.length > 0
+        ? {
+            consultationId: consultation._id,
+            dietRecommendations: parsed.data.dietRecommendations,
+            expiryDate: parsed.data.expiryDate
+              ? new Date(parsed.data.expiryDate)
+              : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            followUpInstructions: parsed.data.treatmentPlan,
+            medications: parsed.data.medications,
+            petId: consultation.petId,
+            precautions: parsed.data.precautions,
+            vetId: consultation.vetId,
+          }
+        : null;
+
+    const writes: Promise<unknown>[] = [
+      consultation.save() as Promise<unknown>,
       Notification.create({
-        body: "Your vet has added diagnosis and treatment notes.",
+        body: "Your vet has added diagnosis, treatment notes, and prescription details.",
         link: `/consultation/${consultation._id.toString()}/summary`,
-        title: "Consultation record ready",
+        title: "Consultation prescription ready",
         type: "consultation",
         userId: consultation.userId,
       }),
-    ]);
+    ];
+
+    if (prescriptionPayload) {
+      writes.push(
+        Prescription.findOneAndUpdate(
+          { consultationId: consultation._id },
+          prescriptionPayload,
+          { new: true, setDefaultsOnInsert: true, upsert: true }
+        )
+      );
+    }
+
+    await Promise.all(writes);
 
     return NextResponse.json({
       success: true,

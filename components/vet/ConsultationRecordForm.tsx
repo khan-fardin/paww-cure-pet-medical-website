@@ -4,6 +4,14 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarDays, Save, Stethoscope } from "lucide-react";
 
+type MedicationDraft = {
+  dosage: string;
+  duration: string;
+  frequency: string;
+  instructions: string;
+  name: string;
+};
+
 type ConsultationRecordFormProps = {
   canWrite: boolean;
   consultationId: string;
@@ -42,6 +50,15 @@ export function ConsultationRecordForm({
   const [diagnosis, setDiagnosis] = useState(initialDiagnosis);
   const [treatmentPlan, setTreatmentPlan] = useState(initialTreatmentPlan);
   const [notes, setNotes] = useState(initialNotes);
+  const [medication, setMedication] = useState<MedicationDraft>({
+    dosage: "",
+    duration: "",
+    frequency: "",
+    instructions: "",
+    name: "",
+  });
+  const [dietRecommendations, setDietRecommendations] = useState("");
+  const [precautions, setPrecautions] = useState("");
   const [followUpDueDate, setFollowUpDueDate] = useState(
     initialFollowUpDueDate
   );
@@ -63,8 +80,24 @@ export function ConsultationRecordForm({
     const response = await fetch(`/api/consultations/${consultationId}/record`, {
       body: JSON.stringify({
         diagnosis,
+        dietRecommendations,
         followUpDueDate: followUpDueDate || undefined,
+        medications: medication.name.trim()
+          ? [
+              {
+                dosage: medication.dosage,
+                duration: medication.duration,
+                frequency: medication.frequency,
+                instructions: medication.instructions || undefined,
+                name: medication.name,
+              },
+            ]
+          : [],
         notes,
+        precautions: precautions
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
         treatmentPlan,
       }),
       headers: { "Content-Type": "application/json" },
@@ -82,7 +115,7 @@ export function ConsultationRecordForm({
     }
 
     setSaveState("saved");
-    setMessage("Record saved and the user has been notified.");
+    setMessage("Prescription saved and the user has been notified.");
     router.refresh();
   }
 
@@ -129,6 +162,97 @@ export function ConsultationRecordForm({
             placeholder="Medication, care instructions, food, rest, and warning signs."
             required
             value={treatmentPlan}
+          />
+        </section>
+
+        <section className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="mb-5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Prescription
+            </p>
+            <h3 className="mt-2 text-xl font-bold text-slate-950">
+              Medication details
+            </h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              ["name", "Medication", "e.g. Amoxicillin"],
+              ["dosage", "Dosage", "e.g. 250mg"],
+              ["frequency", "Frequency", "e.g. Twice daily"],
+              ["duration", "Duration", "e.g. 7 days"],
+            ].map(([key, label, placeholder]) => (
+              <div key={key}>
+                <label
+                  className="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+                  htmlFor={key}
+                >
+                  {label}
+                </label>
+                <input
+                  className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                  disabled={!canWrite || saveState === "saving"}
+                  id={key}
+                  onChange={(event) =>
+                    setMedication((current) => ({
+                      ...current,
+                      [key]: event.target.value,
+                    }))
+                  }
+                  placeholder={placeholder}
+                  value={medication[key as keyof MedicationDraft]}
+                />
+              </div>
+            ))}
+          </div>
+          <label
+            className="mt-4 block text-[10px] font-bold uppercase tracking-wider text-slate-400"
+            htmlFor="instructions"
+          >
+            Medication instructions
+          </label>
+          <textarea
+            className="mt-2 min-h-24 w-full rounded-2xl border border-slate-100 p-4 text-sm leading-6 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+            disabled={!canWrite || saveState === "saving"}
+            id="instructions"
+            onChange={(event) =>
+              setMedication((current) => ({
+                ...current,
+                instructions: event.target.value,
+              }))
+            }
+            placeholder="Give with food, avoid missed doses, watch for side effects..."
+            value={medication.instructions}
+          />
+        </section>
+
+        <section className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-sm">
+          <label
+            className="text-[10px] font-bold uppercase tracking-wider text-slate-400"
+            htmlFor="dietRecommendations"
+          >
+            Diet recommendations
+          </label>
+          <textarea
+            className="mt-3 min-h-24 w-full rounded-2xl border border-slate-100 p-4 text-sm leading-6 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+            disabled={!canWrite || saveState === "saving"}
+            id="dietRecommendations"
+            onChange={(event) => setDietRecommendations(event.target.value)}
+            placeholder="Food, water, supplements, restrictions..."
+            value={dietRecommendations}
+          />
+          <label
+            className="mt-4 block text-[10px] font-bold uppercase tracking-wider text-slate-400"
+            htmlFor="precautions"
+          >
+            Precautions
+          </label>
+          <textarea
+            className="mt-3 min-h-24 w-full rounded-2xl border border-slate-100 p-4 text-sm leading-6 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+            disabled={!canWrite || saveState === "saving"}
+            id="precautions"
+            onChange={(event) => setPrecautions(event.target.value)}
+            placeholder="One precaution per line."
+            value={precautions}
           />
         </section>
 
@@ -222,7 +346,7 @@ export function ConsultationRecordForm({
           type="submit"
         >
           <Save className="h-4 w-4" />
-          {saveState === "saving" ? "Saving..." : "Save Record"}
+          {saveState === "saving" ? "Saving..." : "Save Prescription"}
         </button>
       </aside>
     </form>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { DailyConsultationRoom } from "@/components/consultation/DailyConsultationRoom";
+import { AgoraConsultationRoom } from "@/components/consultation/AgoraConsultationRoom";
 import { getSession } from "@/lib/auth/session";
 
 type ConsultationRoomPageProps = {
@@ -22,5 +22,5 @@ export default async function ConsultationRoomPage({
     redirect(`/login?returnUrl=${encodeURIComponent(`/consultation/${id}`)}`);
   }
 
-  return <DailyConsultationRoom consultationId={id} />;
+  return <AgoraConsultationRoom consultationId={id} />;
 }
