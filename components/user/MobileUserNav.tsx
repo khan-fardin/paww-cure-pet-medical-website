@@ -39,7 +39,7 @@ export function MobileUserNav() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[120] lg:hidden">
+    <div className="pointer-events-none fixed inset-x-3 bottom-3 z-[120] lg:hidden">
       <div
         className={cn(
           "mb-3 overflow-hidden rounded-[2rem] border border-black/5 bg-white/95 shadow-[0_20px_40px_rgba(15,23,42,0.14)] backdrop-blur-xl transition-all duration-300",
@@ -76,7 +76,7 @@ export function MobileUserNav() {
 
       <nav
         aria-label="Mobile dashboard navigation"
-        className="grid grid-cols-5 items-center gap-1 rounded-full border border-black/5 bg-white/90 p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+        className="pointer-events-auto grid grid-cols-5 items-center gap-1 rounded-full border border-black/5 bg-white/90 p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.16)] backdrop-blur-xl"
       >
         {dockItems.map((item) => {
           const Icon = item.icon;

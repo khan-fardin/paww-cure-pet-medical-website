@@ -238,6 +238,8 @@ export async function PATCH(
       );
     }
 
+    let updatedUser = null;
+
     if (parsed.data.action === "approve") {
       vetProfile.isVerified = true;
       vetProfile.isActive = true;
@@ -245,7 +247,18 @@ export async function PATCH(
       vetProfile.applicationStatus = "approved";
       vetProfile.verificationDate = new Date();
       vetProfile.rejectionReason = undefined;
-      await User.findByIdAndUpdate(vetProfile.userId, { role: "vet" });
+      updatedUser = await User.findByIdAndUpdate(
+        vetProfile.userId,
+        { role: "vet" },
+        { new: true }
+      ).select("role");
+
+      if (!updatedUser) {
+        return NextResponse.json(
+          { success: false, message: "Linked user account not found" },
+          { status: 404 }
+        );
+      }
     } else {
       vetProfile.isVerified = false;
       vetProfile.acceptingNewPatients = false;
@@ -262,7 +275,10 @@ export async function PATCH(
         parsed.data.action === "approve"
           ? "Vet approved successfully"
           : "Vet application rejected",
-      data: vetProfile,
+      data: {
+        vetProfile,
+        userRole: updatedUser?.role,
+      },
     });
   } catch (error) {
     console.error("[vets/id] PATCH error:", error);

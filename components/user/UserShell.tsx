@@ -127,7 +127,7 @@ export function UserShell({
         </div>
       </header>
 
-      <main className="px-4 pb-28 pt-24 sm:px-6 lg:ml-72 lg:px-8 lg:pb-10">
+      <main className="mobile-safe-bottom px-4 pt-24 sm:px-6 lg:ml-72 lg:px-8 lg:pb-10">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
       <MobileUserNav />

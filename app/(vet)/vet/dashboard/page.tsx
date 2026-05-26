@@ -1,22 +1,35 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import {
-  Clock,
-  DollarSign,
-  FileText,
-  MessageSquare,
-  TrendingUp,
-} from "lucide-react";
+import { redirect } from "next/navigation";
+import { Clock, DollarSign, FileText, MessageSquare } from "lucide-react";
+import mongoose from "mongoose";
 
+import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
-import { VetProfile } from "@/lib/db/models/VetProfile";
 import { Consultation } from "@/lib/db/models/Consultation";
+import "@/lib/db/models/Pet";
 import { Review } from "@/lib/db/models/Review";
-import { User } from "@/lib/db/models/User";
+import "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 
 export const metadata: Metadata = {
   title: "Vet Dashboard | pawwcure",
+};
+
+type ConsultationRow = {
+  _id: { toString(): string };
+  petId?: { name?: string };
+  scheduledAt: Date;
+  status: "scheduled" | "ongoing" | "completed" | "cancelled" | "no-show";
+  type: string;
+};
+
+type ReviewRow = {
+  _id: { toString(): string };
+  comment: string;
+  rating: number;
+  title: string;
+  userId?: { name?: string };
 };
 
 function Card({
@@ -44,96 +57,97 @@ function startOfDay(date: Date) {
 }
 
 export default async function VetDashboardPage() {
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login?returnUrl=/vet/dashboard");
+  }
+
+  if (session.role !== "vet") {
+    redirect("/dashboard");
+  }
+
   await dbConnect();
 
   const now = new Date();
+  const vetObjectId = new mongoose.Types.ObjectId(session.userId);
   const today = startOfDay(now);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-
-  // Get current vet user from auth context
-  // For now, we'll fetch the first vet to demonstrate
-  const vetUser = await User.findOne({ role: "vet" });
-  
-  if (!vetUser) {
-    return (
-      <section className="space-y-8">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
-          <p className="text-red-900 font-bold">No vet profile found</p>
-        </div>
-      </section>
-    );
-  }
-
-  const vetProfile = await VetProfile.findOne({ userId: vetUser._id });
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [
-    todayConsultations,
+    vetProfile,
+    todaySessions,
+    monthEarnings,
     totalEarnings,
     pendingRecords,
     averageRating,
     consultations,
     recentReviews,
   ] = await Promise.all([
+    VetProfile.findOne({ userId: session.userId }).lean<{
+      clinicName?: string;
+      phoneNumber?: string;
+    }>(),
     Consultation.countDocuments({
-      vetId: vetUser._id,
       scheduledAt: { $gte: today, $lt: tomorrow },
+      vetId: session.userId,
     }),
-    Consultation.aggregate([
+    Consultation.aggregate<{ total: number }>([
       {
         $match: {
-          vetId: vetUser._id,
           paymentStatus: "completed",
+          scheduledAt: { $gte: monthStart },
+          vetId: vetObjectId,
         },
       },
+      { $group: { _id: null, total: { $sum: "$fees.total" } } },
+    ]),
+    Consultation.aggregate<{ total: number }>([
       {
-        $group: {
-          _id: null,
-          total: { $sum: "$fees.total" },
+        $match: {
+          paymentStatus: "completed",
+          vetId: vetObjectId,
         },
       },
+      { $group: { _id: null, total: { $sum: "$fees.total" } } },
     ]),
     Consultation.countDocuments({
-      vetId: vetUser._id,
-      status: { $in: ["completed", "ongoing"] },
+      diagnosis: { $in: [null, ""] },
+      paymentStatus: "completed",
+      status: { $in: ["ongoing", "completed"] },
+      vetId: session.userId,
     }),
-    Review.aggregate([
-      {
-        $match: {
-          vetId: vetUser._id,
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          avg: { $avg: "$rating" },
-        },
-      },
+    Review.aggregate<{ avg: number }>([
+      { $match: { vetId: vetObjectId, isVisible: true } },
+      { $group: { _id: null, avg: { $avg: "$rating" } } },
     ]),
-    Consultation.find({
-      vetId: vetUser._id,
-    })
+    Consultation.find({ vetId: session.userId })
+      .populate("petId", "name")
       .sort({ scheduledAt: -1 })
-      .limit(5),
-    Review.find({
-      vetId: vetUser._id,
-    })
+      .limit(6)
+      .lean<ConsultationRow[]>(),
+    Review.find({ vetId: session.userId, isVisible: true })
+      .populate("userId", "name")
       .sort({ createdAt: -1 })
-      .limit(5),
+      .limit(5)
+      .lean<ReviewRow[]>(),
   ]);
 
-  const earnings = totalEarnings[0]?.total || 0;
-  const rating = averageRating[0]?.avg?.toFixed(1) || "0";
-  const upcomingCount = consultations.filter(
-    (c: any) => c.scheduledAt > now && c.status === "scheduled"
-  ).length;
+  const rating = averageRating[0]?.avg?.toFixed(1) ?? "0.0";
+  const upcomingCount = await Consultation.countDocuments({
+    scheduledAt: { $gte: now },
+    status: { $in: ["scheduled", "ongoing"] },
+    vetId: session.userId,
+  });
 
   const stats = [
     {
       icon: DollarSign,
-      label: "Today's Earnings",
+      label: "This Month",
       tone: "bg-emerald-50 text-emerald-700",
-      value: formatBDT(earnings),
+      value: formatBDT(monthEarnings[0]?.total ?? 0),
     },
     {
       icon: Clock,
@@ -151,7 +165,7 @@ export default async function VetDashboardPage() {
       icon: MessageSquare,
       label: "Reviews",
       tone: "bg-teal-50 text-teal-700",
-      value: `${rating}★`,
+      value: `${rating} star`,
     },
   ] as const;
 
@@ -164,22 +178,21 @@ export default async function VetDashboardPage() {
               Vet dashboard
             </div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Hi {vetUser.name.split(" ")[0]}, you have {upcomingCount} sessions
-              today.
+              You have {todaySessions} sessions today.
             </h1>
             <p className="mt-5 max-w-xl leading-relaxed text-teal-100/70">
-              Review your schedule, pending patient notes, recent reviews, and
-              earnings from one dashboard.
+              Your schedule, patient notes, reviews, and earnings are scoped to
+              your own vet account only.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-teal-950 shadow-xl shadow-black/10 transition hover:scale-[1.02] active:scale-95"
+                className="inline-flex justify-center rounded-2xl bg-white px-6 py-4 text-sm font-bold text-teal-950 shadow-xl shadow-black/10"
                 href="/vet/consultations"
               >
                 View Schedule
               </Link>
               <Link
-                className="inline-flex justify-center rounded-2xl border border-white/15 px-6 py-4 text-sm font-bold text-white transition hover:bg-white/10"
+                className="inline-flex justify-center rounded-2xl border border-white/15 px-6 py-4 text-sm font-bold text-white"
                 href="/vet/availability"
               >
                 Set Availability
@@ -192,15 +205,15 @@ export default async function VetDashboardPage() {
                   Clinic
                 </p>
                 <p className="mt-1 text-xl font-bold">
-                  {vetProfile?.clinicName || "Not set"}
+                  {vetProfile?.clinicName ?? "Not set"}
                 </p>
               </div>
               <div className="rounded-[2rem] bg-white/10 p-5 backdrop-blur-xl">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-teal-100/70">
-                  Phone
+                  Total earned
                 </p>
                 <p className="mt-1 text-xl font-bold">
-                  {vetProfile?.phoneNumber || "Not set"}
+                  {formatBDT(totalEarnings[0]?.total ?? 0)}
                 </p>
               </div>
             </div>
@@ -208,11 +221,11 @@ export default async function VetDashboardPage() {
         </div>
 
         <div className="flex flex-col gap-5">
-          {stats.map(({ icon: Icon, label, tone, value }, i) => (
-            <Card key={i}>
+          {stats.map(({ icon: Icon, label, tone, value }) => (
+            <Card key={label}>
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500 uppercase">
+                  <p className="text-xs font-semibold uppercase text-slate-500">
                     {label}
                   </p>
                   <p className="mt-2 text-2xl font-bold text-slate-900">
@@ -230,61 +243,69 @@ export default async function VetDashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <div className="flex items-center justify-between gap-4 mb-5">
+          <div className="mb-5 flex items-center justify-between gap-4">
             <h3 className="text-lg font-bold text-slate-900">
-              Upcoming Sessions
+              Latest Sessions
             </h3>
+            <Link className="text-sm font-bold text-teal-700" href="/vet/consultations">
+              View all
+            </Link>
           </div>
           <div className="space-y-4">
-            {consultations.slice(0, 5).map((consultation: any) => (
-              <div
-                key={consultation._id}
-                className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0"
-              >
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {consultation.type}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {new Date(consultation.scheduledAt).toLocaleString()}
-                  </p>
-                </div>
-                <div
-                  className={`text-sm font-bold px-3 py-1 rounded-full ${
-                    consultation.status === "scheduled"
-                      ? "bg-blue-100 text-blue-700"
-                      : consultation.status === "completed"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
-                  }`}
+            {consultations.length === 0 ? (
+              <p className="text-sm text-slate-500">No sessions yet.</p>
+            ) : (
+              consultations.map((consultation) => (
+                <Link
+                  className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0"
+                  href={`/vet/consultations/${consultation._id.toString()}`}
+                  key={consultation._id.toString()}
                 >
-                  {consultation.status}
-                </div>
-              </div>
-            ))}
+                  <div>
+                    <p className="font-semibold capitalize text-slate-900">
+                      {consultation.petId?.name ?? "Patient"} · {consultation.type}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {new Date(consultation.scheduledAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold capitalize text-slate-600">
+                    {consultation.status}
+                  </span>
+                </Link>
+              ))
+            )}
           </div>
         </Card>
 
         <Card>
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <h3 className="text-lg font-bold text-slate-900">
-              Recent Reviews
-            </h3>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h3 className="text-lg font-bold text-slate-900">Recent Reviews</h3>
+            <Link className="text-sm font-bold text-teal-700" href="/vet/reviews">
+              View all
+            </Link>
           </div>
           <div className="space-y-4">
-            {recentReviews.slice(0, 5).map((review: any) => (
-              <div
-                key={review._id}
-                className="border-b border-slate-100 pb-4 last:border-0"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-yellow-400">★</span>
-                  <span className="font-bold text-slate-900">{review.rating}</span>
-                  <span className="text-sm text-slate-500">({review.title})</span>
+            {recentReviews.length === 0 ? (
+              <p className="text-sm text-slate-500">No reviews yet.</p>
+            ) : (
+              recentReviews.map((review) => (
+                <div
+                  className="border-b border-slate-100 pb-4 last:border-0"
+                  key={review._id.toString()}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-amber-500">star</span>
+                    <span className="font-bold text-slate-900">{review.rating}</span>
+                    <span className="text-sm text-slate-500">{review.title}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">{review.comment}</p>
+                  <p className="mt-1 text-xs font-bold text-slate-400">
+                    {review.userId?.name ?? "User"}
+                  </p>
                 </div>
-                <p className="text-sm text-slate-600 mt-2">{review.comment}</p>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </Card>
       </div>

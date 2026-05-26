@@ -15,6 +15,7 @@ import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
 import { Pet } from "@/lib/db/models/Pet";
 import { User } from "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 
 export const metadata: Metadata = {
   title: "User Management | pawwcure Admin",
@@ -42,6 +43,10 @@ type AdminUser = {
 type CountRow = {
   _id: { toString(): string };
   count: number;
+};
+
+type ApprovedVetRow = {
+  userId: { toString(): string };
 };
 
 function Card({
@@ -90,6 +95,25 @@ export default async function AdminUsersPage({
   const status = filters.status ?? "all";
 
   await dbConnect();
+
+  const approvedVetProfiles = await VetProfile.find({
+    applicationStatus: "approved",
+    isVerified: true,
+  })
+    .select("userId")
+    .lean<ApprovedVetRow[]>();
+
+  const approvedVetIds = approvedVetProfiles.map((profile) => profile.userId);
+
+  if (approvedVetIds.length > 0) {
+    await User.updateMany(
+      {
+        _id: { $in: approvedVetIds },
+        role: "user",
+      },
+      { $set: { role: "vet" } }
+    );
+  }
 
   const query: Record<string, unknown> = {};
 
@@ -205,6 +229,7 @@ export default async function AdminUsersPage({
             const userId = user._id.toString();
             const petCount = petCounts.get(userId) ?? 0;
             const spend = spendTotals.get(userId) ?? 0;
+            const effectiveRole = user.role;
 
             return (
               <div
@@ -218,10 +243,10 @@ export default async function AdminUsersPage({
                     </h3>
                     <span
                       className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${roleClass(
-                        user.role
+                        effectiveRole
                       )}`}
                     >
-                      {user.role}
+                      {effectiveRole}
                     </span>
                     <span
                       className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass(

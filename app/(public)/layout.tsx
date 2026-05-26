@@ -9,7 +9,7 @@ export default function PublicLayout({
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAFA] text-[#1A1A1A]">
       <PublicNav />
-      <main className="flex-1 pb-24 md:pb-0">{children}</main>
+      <main className="mobile-safe-bottom flex-1 md:pb-0">{children}</main>
       <Footer />
     </div>
   );

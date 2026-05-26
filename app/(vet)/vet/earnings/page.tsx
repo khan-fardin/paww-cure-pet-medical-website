@@ -1,8 +1,25 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { CreditCard, DollarSign, TrendingUp } from "lucide-react";
+import mongoose from "mongoose";
+
+import { getSession } from "@/lib/auth/session";
+import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
+import "@/lib/db/models/Pet";
+import { User } from "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Earnings | pawwcure",
+};
+
+type TransactionRow = {
+  _id: { toString(): string };
+  fees: { total: number };
+  petId?: { name?: string };
+  scheduledAt: Date;
+  status: string;
+  type: string;
 };
 
 function Card({
@@ -21,37 +38,68 @@ function Card({
   );
 }
 
-export default function EarningsPage() {
-  const transactions = [
-    {
-      id: "txn-001",
-      date: "May 1, 2026",
-      amount: "BDT 1,200",
-      description: "Video consultation - Luna",
-      status: "Completed",
-    },
-    {
-      id: "txn-002",
-      date: "April 28, 2026",
-      amount: "BDT 1,450",
-      description: "Video consultation - Buddy",
-      status: "Completed",
-    },
-    {
-      id: "txn-003",
-      date: "April 25, 2026",
-      amount: "BDT 1,100",
-      description: "Chat consultation - Max",
-      status: "Completed",
-    },
-  ];
+function formatBDT(value: number) {
+  return `BDT ${new Intl.NumberFormat("en-BD").format(value)}`;
+}
+
+export default async function EarningsPage() {
+  const session = await getSession();
+
+  if (!session) {
+    redirect("/login?returnUrl=/vet/earnings");
+  }
+
+  if (session.role !== "vet") {
+    redirect("/dashboard");
+  }
+
+  await dbConnect();
+
+  const now = new Date();
+  const vetObjectId = new mongoose.Types.ObjectId(session.userId);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [vetUser, monthRows, totalRows, transactions] = await Promise.all([
+    User.findById(session.userId).select("name").lean<{ name?: string }>(),
+    Consultation.aggregate<{ total: number }>([
+      {
+        $match: {
+          paymentStatus: "completed",
+          scheduledAt: { $gte: monthStart },
+          vetId: vetObjectId,
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$fees.total" } } },
+    ]),
+    Consultation.aggregate<{ total: number }>([
+      {
+        $match: {
+          paymentStatus: "completed",
+          vetId: vetObjectId,
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$fees.total" } } },
+    ]),
+    Consultation.find({
+      paymentStatus: "completed",
+      vetId: session.userId,
+    })
+      .populate("petId", "name")
+      .sort({ scheduledAt: -1 })
+      .limit(30)
+      .lean<TransactionRow[]>(),
+  ]);
+
+  const monthTotal = monthRows[0]?.total ?? 0;
+  const totalEarned = totalRows[0]?.total ?? 0;
+  const pendingPayout = Math.round(monthTotal * 0.8);
 
   return (
     <section className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">My Earnings</h1>
         <p className="mt-2 text-slate-500">
-          Revenue, payouts, and transaction history
+          Revenue from completed paid consultations assigned to you.
         </p>
       </div>
 
@@ -62,7 +110,7 @@ export default function EarningsPage() {
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 This month
               </p>
-              <p className="mt-2 text-3xl font-bold">BDT 96,800</p>
+              <p className="mt-2 text-3xl font-bold">{formatBDT(monthTotal)}</p>
             </div>
             <DollarSign className="h-10 w-10 text-teal-100" />
           </div>
@@ -72,9 +120,11 @@ export default function EarningsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Pending payout
+                Estimated payout
               </p>
-              <p className="mt-2 text-3xl font-bold">BDT 24,200</p>
+              <p className="mt-2 text-3xl font-bold">
+                {formatBDT(pendingPayout)}
+              </p>
             </div>
             <CreditCard className="h-10 w-10 text-amber-100" />
           </div>
@@ -86,7 +136,9 @@ export default function EarningsPage() {
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Total earned
               </p>
-              <p className="mt-2 text-3xl font-bold">BDT 287,600</p>
+              <p className="mt-2 text-3xl font-bold">
+                {formatBDT(totalEarned)}
+              </p>
             </div>
             <TrendingUp className="h-10 w-10 text-emerald-100" />
           </div>
@@ -95,65 +147,56 @@ export default function EarningsPage() {
 
       <Card>
         <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-4">Payout Information</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Bank account holder
-              </label>
-              <input
-                className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                defaultValue="Dr. Amina Rahman"
-                type="text"
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Bank name
-                </label>
-                <input
-                  className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  defaultValue="Dhaka Bank"
-                  type="text"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Account number
-                </label>
-                <input
-                  className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  defaultValue="1234567890"
-                  type="text"
-                />
-              </div>
-            </div>
+          <h2 className="mb-4 text-2xl font-bold">Payout Information</h2>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Bank account holder
+            </label>
+            <input
+              className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+              defaultValue={vetUser?.name ?? ""}
+              type="text"
+            />
           </div>
         </div>
-        <button className="rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700 w-full">
+        <button className="w-full rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700">
           Request Payout
         </button>
       </Card>
 
       <Card>
-        <h2 className="text-2xl font-bold mb-6">Transaction History</h2>
+        <h2 className="mb-6 text-2xl font-bold">Transaction History</h2>
         <div className="space-y-3">
-          {transactions.map((txn) => (
-            <div
-              className="flex items-center justify-between p-4 rounded-2xl bg-slate-50"
-              key={txn.id}
-            >
-              <div>
-                <p className="font-bold text-slate-900">{txn.description}</p>
-                <p className="mt-1 text-sm text-slate-500">{txn.date}</p>
+          {transactions.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No completed paid consultations yet.
+            </p>
+          ) : (
+            transactions.map((transaction) => (
+              <div
+                className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"
+                key={transaction._id.toString()}
+              >
+                <div>
+                  <p className="font-bold capitalize text-slate-900">
+                    {transaction.type} consultation -{" "}
+                    {transaction.petId?.name ?? "Patient"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {new Date(transaction.scheduledAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-emerald-700">
+                    {formatBDT(transaction.fees.total)}
+                  </p>
+                  <p className="mt-1 text-xs capitalize text-slate-500">
+                    {transaction.status}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-bold text-emerald-700">{txn.amount}</p>
-                <p className="mt-1 text-xs text-slate-500">{txn.status}</p>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
     </section>

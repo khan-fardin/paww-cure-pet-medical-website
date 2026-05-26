@@ -32,7 +32,7 @@ export function MobilePublicNav() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="fixed inset-x-4 bottom-4 z-[120] md:hidden">
+    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[120] md:hidden">
       <div
         className={cn(
           "mb-3 overflow-hidden rounded-[2rem] border border-black/5 bg-white/95 shadow-[0_20px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl transition-all duration-300",
@@ -67,7 +67,7 @@ export function MobilePublicNav() {
 
       <nav
         aria-label="Mobile public navigation"
-        className="grid grid-cols-4 items-center gap-1 rounded-full border border-black/5 bg-white/90 p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl"
+        className="pointer-events-auto grid grid-cols-4 items-center gap-1 rounded-full border border-black/5 bg-white/90 p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.14)] backdrop-blur-xl"
       >
         {dockLinks.map((item) => {
           const isActive = isActivePath(pathname, item.href);

@@ -57,7 +57,10 @@ export function VetReviewQueue({ vets }: { vets: VetApplicationItem[] }) {
       method: "PATCH",
     });
 
-    const payload = (await response.json()) as { message?: string };
+    const payload = (await response.json()) as {
+      data?: { userRole?: string };
+      message?: string;
+    };
     setBusyId(null);
 
     if (!response.ok) {
@@ -67,7 +70,7 @@ export function VetReviewQueue({ vets }: { vets: VetApplicationItem[] }) {
 
     setMessage(
       action === "approve"
-        ? "Vet approved and public profile activated."
+        ? `Vet approved. User account role is now ${payload.data?.userRole ?? "vet"}.`
         : "Vet application rejected."
     );
     startTransition(() => router.refresh());
