@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     const user = await User.findById(payload.userId).select(
-      "name email avatar role isActive refreshToken"
+      "name email phone avatar role isActive refreshToken"
     );
 
     if (!user || !user.isActive) {
@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
       user: {
         name: user.name,
         email: user.email,
+        phone: user.phone,
         avatar: user.avatar,
         role: user.role,
       },

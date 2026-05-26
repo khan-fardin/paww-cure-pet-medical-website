@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyToken } from "@/lib/auth/jwt";
 import { dbConnect } from "@/lib/db/connect";
+import { User } from "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
 import mongoose from "mongoose";
 
@@ -244,6 +245,7 @@ export async function PATCH(
       vetProfile.applicationStatus = "approved";
       vetProfile.verificationDate = new Date();
       vetProfile.rejectionReason = undefined;
+      await User.findByIdAndUpdate(vetProfile.userId, { role: "vet" });
     } else {
       vetProfile.isVerified = false;
       vetProfile.acceptingNewPatients = false;

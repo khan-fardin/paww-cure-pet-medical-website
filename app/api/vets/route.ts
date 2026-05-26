@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { dbConnect } from "@/lib/db/connect";
+import { getSession } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/hash";
 import { User } from "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
@@ -30,8 +31,9 @@ const vetApplicationSchema = z.object({
   licenseFileName: z.string().optional(),
   licenseNumber: z.string().min(2),
   name: z.string().min(2),
-  password: z.string().min(8),
+  password: z.string().min(8).optional(),
   phone: z.string().optional(),
+  profilePhotoName: z.string().min(1),
   specialties: z.array(z.string()).default([]),
 });
 
@@ -136,11 +138,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find or create User
-    let user = await User.findOne({ email: parsed.data.email });
+    const session = await getSession();
+    let user = session
+      ? await User.findById(session.userId)
+      : await User.findOne({ email: parsed.data.email });
+    const isSignedInApplication = Boolean(session);
+
+    if (session && !user) {
+      return NextResponse.json(
+        { success: false, message: "Signed-in account not found" },
+        { status: 404 }
+      );
+    }
 
     if (!user) {
       // Create new User if doesn't exist
+      if (!parsed.data.password) {
+        return NextResponse.json(
+          { success: false, message: "Password is required for new accounts" },
+          { status: 400 }
+        );
+      }
+
       const passwordHash = await hashPassword(parsed.data.password);
       try {
         user = await User.create({
@@ -165,6 +184,22 @@ export async function POST(req: NextRequest) {
         throw err;
       }
     } else {
+      if (
+        isSignedInApplication &&
+        (user.email.toLowerCase() !== parsed.data.email.toLowerCase() ||
+          user.name !== parsed.data.name ||
+          (user.phone ?? "") !== (parsed.data.phone ?? ""))
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Application identity must match your signed-in account details.",
+          },
+          { status: 400 }
+        );
+      }
+
       // User already exists - check if they already have a vet profile
       const existingVetProfile = await VetProfile.findOne({ userId: user._id });
       if (existingVetProfile) {
@@ -204,6 +239,7 @@ export async function POST(req: NextRequest) {
         consultationDuration: 30,
         isVerified: false,
         applicationStatus: "submitted",
+        profilePhotoName: parsed.data.profilePhotoName,
         licenseDocumentName: parsed.data.licenseFileName,
         degreeDocumentName: parsed.data.degreeFileName,
         isActive: true,

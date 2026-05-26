@@ -30,6 +30,7 @@ type VetApplicationDraft = {
   name: string;
   password: string;
   phone: string;
+  profilePhotoName: string;
   specialties: string[];
 };
 
@@ -54,6 +55,7 @@ const initialDraft: VetApplicationDraft = {
   name: "",
   password: "",
   phone: "",
+  profilePhotoName: "",
   specialties: [],
 };
 
@@ -132,6 +134,7 @@ export function VetApplicationWizard() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitMessage, setSubmitMessage] = useState("");
+  const [identityLocked, setIdentityLocked] = useState(false);
 
   const stepTitle = steps[currentStep];
   const isFinalStep = currentStep === steps.length - 1;
@@ -166,6 +169,44 @@ export function VetApplicationWizard() {
     }, 0);
 
     return () => window.clearTimeout(restoreDraft);
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadCurrentUser() {
+      const response = await fetch("/api/auth/me", { credentials: "include" });
+      const payload = (await response.json().catch(() => null)) as
+        | {
+          user?: {
+            email?: string;
+            name?: string;
+            phone?: string;
+          };
+        }
+        | null;
+        
+      if (ignore || !response.ok || !payload?.user) return;
+      
+      const nextName = payload.user?.name ?? "";
+      const nextEmail = payload.user?.email ?? "";
+      const nextPhone = payload.user?.phone ?? "";
+
+      setDraft((current) => ({
+        ...current,
+        email: nextEmail || current.email,
+        name: nextName || current.name,
+        password: "********",
+        phone: nextPhone || current.phone,
+      }));
+      setIdentityLocked(Boolean(nextName && nextEmail && nextPhone));
+    }
+
+    void loadCurrentUser();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   function updateDraft<K extends keyof VetApplicationDraft>(
@@ -341,6 +382,7 @@ export function VetApplicationWizard() {
                     <FieldLabel label="Full name *">
                       <Input
                         autoComplete="name"
+                        disabled={identityLocked}
                         onChange={(event) =>
                           updateDraft("name", event.target.value)
                         }
@@ -352,6 +394,7 @@ export function VetApplicationWizard() {
                     <FieldLabel label="Phone *">
                       <Input
                         autoComplete="tel"
+                        disabled={identityLocked}
                         onChange={(event) =>
                           updateDraft("phone", event.target.value)
                         }
@@ -365,6 +408,7 @@ export function VetApplicationWizard() {
                   <FieldLabel label="Email address *">
                     <Input
                       autoComplete="email"
+                      disabled={identityLocked}
                       onChange={(event) =>
                         updateDraft("email", event.target.value)
                       }
@@ -377,6 +421,7 @@ export function VetApplicationWizard() {
                   <FieldLabel label="Password (min. 8 chars) *">
                     <Input
                       autoComplete="new-password"
+                      disabled={identityLocked}
                       onChange={(event) =>
                         updateDraft("password", event.target.value)
                       }
@@ -556,6 +601,31 @@ export function VetApplicationWizard() {
                   <p className="text-sm text-slate-600">
                     Upload clear scans of your credentials. Accepted formats: JPG, PNG, PDF
                   </p>
+                  <FieldLabel label="Profile photo *">
+                    <div className="space-y-2">
+                      <Input
+                        accept=".jpg,.jpeg,.png,.webp"
+                        onChange={(event) =>
+                          updateDraft(
+                            "profilePhotoName",
+                            event.target.files?.[0]?.name ?? "",
+                          )
+                        }
+                        required
+                        type="file"
+                      />
+                      {draft.profilePhotoName ? (
+                        <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                          <CheckCircle2 className="h-4 w-4" />
+                          {draft.profilePhotoName}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-400">
+                          A clear face photo is required for public vet profiles.
+                        </p>
+                      )}
+                    </div>
+                  </FieldLabel>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldLabel label="License scan *">
                       <div className="space-y-2">
@@ -625,6 +695,7 @@ export function VetApplicationWizard() {
                     ["Specialties", draft.specialties.join(", ") || "Not selected"],
                     ["Languages", draft.languages || "Not specified"],
                     ["Consult fee", "BDT " + draft.consultFee],
+                    ["Profile photo", draft.profilePhotoName],
                     ["License scan", draft.licenseFileName],
                     ["Degree certificate", draft.degreeFileName],
                   ].map(([label, value]) => (
@@ -663,6 +734,7 @@ export function VetApplicationWizard() {
                       !draft.name ||
                       !draft.email ||
                       !draft.password ||
+                      !draft.profilePhotoName ||
                       !draft.licenseNumber ||
                       !draft.clinicName ||
                       !draft.clinicCity ||

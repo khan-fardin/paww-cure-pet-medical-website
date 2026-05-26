@@ -22,6 +22,7 @@ export interface IVetProfile extends Document {
   verificationDate?: Date;
   applicationStatus: "draft" | "submitted" | "approved" | "rejected";
   rejectionReason?: string;
+  profilePhotoName?: string;
   licenseDocumentName?: string;
   degreeDocumentName?: string;
   isActive: boolean;
@@ -70,6 +71,7 @@ const VetProfileSchema = new Schema<IVetProfile>(
       index: true,
     },
     rejectionReason: String,
+    profilePhotoName: String,
     licenseDocumentName: String,
     degreeDocumentName: String,
     isActive: { type: Boolean, default: true },
