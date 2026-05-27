@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
         hostname: "**.s3.amazonaws.com",
       },
     ],
+    domains: ["img.magnific.com"],
   },
 };
 

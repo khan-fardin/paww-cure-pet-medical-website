@@ -1,5 +1,18 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
+import {
+  Activity,
+  CalendarCheck,
+  HeartPulse,
+  MessageCircle,
+  PawPrint,
+  Pill,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  Video,
+  type LucideIcon,
+} from "lucide-react";
 
 type Review = {
   avatar: string;
@@ -107,7 +120,174 @@ function StarRating() {
     </div>
   );
 }
+type HeroSignal = {
+  icon: LucideIcon;
+  label: string;
+  tone: string;
+  value: string;
+};
 
+const heroSignals: HeroSignal[] = [
+  {
+    icon: HeartPulse,
+    label: "Health Score",
+    tone: "text-emerald-600",
+    value: "98 / 100",
+  },
+  {
+    icon: Pill,
+    label: "e-Prescription",
+    tone: "text-blue-600",
+    value: "Ready in 2 min",
+  },
+];
+
+function SignalCard({ icon: Icon, label, tone, value }: HeroSignal) {
+  return (
+    <div className="group/card relative overflow-hidden rounded-[1.5rem] border border-white/70 bg-white/90 p-4 shadow-xl shadow-emerald-950/10 backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-2xl sm:first:-rotate-2 sm:last:rotate-2 sm:group-hover:first:rotate-0 sm:group-hover:last:rotate-0">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 ${tone}`}>
+          <Icon aria-hidden="true" className="h-5 w-5" />
+        </div>
+        <Sparkles
+          aria-hidden="true"
+          className="h-4 w-4 text-amber-400 opacity-70 transition group-hover/card:rotate-12"
+        />
+      </div>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-bold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function HeroExperiencePanel() {
+  return (
+    <div className="relative mx-auto w-full max-w-[560px] lg:ml-auto">
+      <div className="group relative isolate overflow-hidden rounded-[3rem] border border-emerald-100/80 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4 shadow-[0_34px_90px_rgba(15,118,110,0.18)] transition duration-500 hover:-translate-y-1 sm:p-5">
+        <div className="absolute inset-0 -z-10 bg-[linear-gradient(rgba(16,185,129,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(14,165,233,0.07)_1px,transparent_1px)] bg-[size:32px_32px] opacity-60" />
+
+        <div className="relative z-10">
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-[1.5rem] border border-white/70 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                Live care room
+              </span>
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/20">
+              <Video aria-hidden="true" className="h-3.5 w-3.5" />
+              24/7
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-[2.25rem] bg-slate-950 shadow-2xl shadow-slate-950/20">
+            <div className="relative h-[330px] sm:h-[370px]">
+              <Image
+                alt="Veterinarian caring for a calm dog during a consultation"
+                className="object-cover transition duration-700 group-hover:scale-[1.04]"
+                fill
+                priority
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                src="https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&q=80&w=1100"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" />
+
+              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/20 bg-white/15 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md">
+                <Stethoscope aria-hidden="true" className="h-4 w-4" />
+                Dr. Amelia joined
+              </div>
+
+              <div className="absolute right-4 top-4 rounded-[1.25rem] border border-white/20 bg-white/90 p-3 text-slate-950 shadow-xl backdrop-blur">
+                <div className="mb-2 flex items-center gap-2">
+                  <Activity aria-hidden="true" className="h-4 w-4 text-emerald-600" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Vitals
+                  </span>
+                </div>
+                <div className="flex items-end gap-1">
+                  {[38, 54, 44, 68, 48, 76].map((height, index) => (
+                    <span
+                      className="w-1.5 rounded-full bg-emerald-500/80 transition-all duration-500 group-hover:bg-emerald-600"
+                      key={index}
+                      style={{ height }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="absolute bottom-4 left-4 right-4 rounded-[1.5rem] border border-white/20 bg-slate-950/70 p-4 text-white shadow-xl backdrop-blur-md">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-200">
+                      Buddy&apos;s consultation
+                    </p>
+                    <p className="mt-1 text-lg font-bold">Nutrition follow-up</p>
+                  </div>
+                  <div className="flex -space-x-2">
+                    {avatarUsers.map((userId) => (
+                      <Image
+                        alt=""
+                        className="h-9 w-9 rounded-full border-2 border-white object-cover"
+                        height={36}
+                        key={userId}
+                        src={`https://i.pravatar.cc/100?u=hero-${userId}`}
+                        width={36}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative z-20 -mt-8 grid gap-3 px-2 sm:grid-cols-2">
+            {heroSignals.map((signal) => (
+              <SignalCard key={signal.label} {...signal} />
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-[2rem] border border-white/70 bg-white/90 p-4 shadow-xl shadow-emerald-950/10 backdrop-blur transition duration-300 group-hover:-translate-y-1">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/25">
+                  <PawPrint aria-hidden="true" className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-950">Care plan updated</p>
+                  <p className="text-xs text-slate-500">Vaccines, diet, and reminders synced</p>
+                </div>
+              </div>
+              <div className="hidden items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-xs font-bold text-slate-600 sm:flex">
+                <CalendarCheck aria-hidden="true" className="h-4 w-4 text-emerald-600" />
+                Today
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-emerald-50 p-3">
+                <ShieldCheck aria-hidden="true" className="mb-2 h-4 w-4 text-emerald-600" />
+                <p className="text-[11px] font-bold text-emerald-950">Secure records</p>
+              </div>
+              <div className="rounded-2xl bg-blue-50 p-3">
+                <MessageCircle aria-hidden="true" className="mb-2 h-4 w-4 text-blue-600" />
+                <p className="text-[11px] font-bold text-blue-950">Vet chat</p>
+              </div>
+              <div className="rounded-2xl bg-amber-50 p-3">
+                <PawPrint aria-hidden="true" className="mb-2 h-4 w-4 text-amber-600" />
+                <p className="text-[11px] font-bold text-amber-950">Pet profile</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 export function LandingPage() {
   return (
     <>
@@ -166,20 +346,7 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="relative z-10 h-[420px] overflow-hidden rounded-[3rem] shadow-2xl sm:h-[500px]">
-              <Image
-                alt="Modern veterinary clinic"
-                className="object-cover"
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                src="https://images.unsplash.com/photo-1629909613654-28e377c37b09?auto=format&fit=crop&q=80&w=1000"
-              />
-            </div>
-            <div className="absolute -bottom-10 -left-10 h-64 w-64 rounded-full bg-emerald-100 opacity-50 blur-3xl" />
-            <div className="absolute -right-10 -top-10 h-64 w-64 rounded-full bg-blue-100 opacity-50 blur-3xl" />
-          </div>
+          <HeroExperiencePanel />
         </div>
       </header>
 
@@ -333,3 +500,4 @@ export function LandingPage() {
     </>
   );
 }
+
