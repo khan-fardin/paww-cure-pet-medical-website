@@ -6,6 +6,7 @@ import {
   Home,
   MessageSquare,
   Settings,
+  Stethoscope,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -17,6 +18,7 @@ import { MobileModNav } from "@/components/mod/MobileModNav";
 
 const navItems = [
   { href: "/mod/dashboard", icon: Home, label: "Dashboard" },
+  { href: "/mod/consultations", icon: Stethoscope, label: "Consultation Ops" },
   { href: "/mod/vets", icon: CheckCircle2, label: "Vet Verification" },
   { href: "/mod/flags", icon: Flag, label: "Flagged Content" },
   { href: "/mod/tickets", icon: MessageSquare, label: "Support Tickets" },

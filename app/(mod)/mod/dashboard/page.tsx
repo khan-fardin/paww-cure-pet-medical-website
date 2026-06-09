@@ -2,15 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertCircle,
-  CheckCircle2,
   Clock,
-  FileText,
   Flag,
-  MessageSquare,
-  Users,
+  Stethoscope,
 } from "lucide-react";
 
 import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
 import { VetProfile } from "@/lib/db/models/VetProfile";
 import { Review } from "@/lib/db/models/Review";
 
@@ -41,14 +39,23 @@ export default async function ModDashboardPage() {
     pendingVets,
     verificationCount,
     flaggedReviews,
-    totalPendingItems,
+    activeConsultations,
+    attentionConsultations,
     pendingVetsList,
     flaggedReviewsList,
   ] = await Promise.all([
     VetProfile.countDocuments({ applicationStatus: "submitted" }),
     VetProfile.countDocuments({ applicationStatus: "submitted" }),
     Review.countDocuments({ isVisible: false }),
-    Promise.resolve(0), // Total pending = pending vets + flagged reviews
+    Consultation.countDocuments({
+      status: { $in: ["scheduled", "ongoing"] },
+      paymentStatus: "completed",
+    }),
+    Consultation.countDocuments({
+      status: "scheduled",
+      paymentStatus: "completed",
+      scheduledAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) },
+    }),
     VetProfile.find({ applicationStatus: "submitted" })
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
@@ -59,7 +66,7 @@ export default async function ModDashboardPage() {
       .limit(5),
   ]);
 
-  const totalPending = verificationCount + flaggedReviews;
+  const totalPending = verificationCount + flaggedReviews + attentionConsultations;
 
   const stats = [
     {
@@ -75,16 +82,16 @@ export default async function ModDashboardPage() {
       value: flaggedReviews.toString(),
     },
     {
-      icon: MessageSquare,
-      label: "Open Tickets",
+      icon: Stethoscope,
+      label: "Live Consults",
       tone: "bg-blue-50 text-blue-600",
-      value: (verificationCount + flaggedReviews).toString(),
+      value: activeConsultations.toString(),
     },
     {
-      icon: FileText,
-      label: "Articles to Review",
-      tone: "bg-purple-50 text-purple-600",
-      value: "1",
+      icon: AlertCircle,
+      label: "Needs Help",
+      tone: "bg-red-50 text-red-600",
+      value: attentionConsultations.toString(),
     },
   ] as const;
 
@@ -112,9 +119,9 @@ export default async function ModDashboardPage() {
               </Link>
               <Link
                 className="inline-flex justify-center rounded-2xl border border-white/15 px-6 py-4 text-sm font-bold text-white transition hover:bg-white/10"
-                href="/mod/flags"
+                href="/mod/consultations"
               >
-                Check Flags
+                Watch Consults
               </Link>
             </div>
 
@@ -157,6 +164,38 @@ export default async function ModDashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h3 className="text-lg font-bold text-slate-900">
+              Consultation Operations
+            </h3>
+            <Link
+              href="/mod/consultations"
+              className="text-sm font-bold text-amber-600 hover:text-amber-700"
+            >
+              Monitor all
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl bg-blue-50 p-5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">
+                Active paid sessions
+              </p>
+              <p className="mt-2 text-3xl font-bold text-blue-950">
+                {activeConsultations}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-red-50 p-5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-red-700">
+                Late scheduled
+              </p>
+              <p className="mt-2 text-3xl font-bold text-red-950">
+                {attentionConsultations}
+              </p>
+            </div>
+          </div>
+        </Card>
+
         <Card>
           <div className="flex items-center justify-between gap-4 mb-5">
             <h3 className="text-lg font-bold text-slate-900">

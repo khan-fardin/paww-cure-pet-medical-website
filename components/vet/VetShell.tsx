@@ -15,7 +15,6 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { MobileVetNav } from "@/components/vet/MobileVetNav";
-import { demoVets } from "@/lib/demo/publicContent";
 
 const navItems = [
   { href: "/vet/dashboard", icon: Home, label: "Dashboard" },
@@ -40,11 +39,10 @@ export function VetShell({
   children: ReactNode;
   vet?: ShellVet;
 }) {
-  const fallbackVet = demoVets[0];
   const currentVet = {
-    avatar: vet?.avatar ?? fallbackVet.avatar,
-    name: vet?.name ?? fallbackVet.name,
-    specialty: vet?.specialty ?? fallbackVet.specialties[0],
+    avatar: vet?.avatar,
+    name: vet?.name ?? "Vet",
+    specialty: vet?.specialty ?? "Profile pending",
   };
 
   return (
@@ -107,7 +105,10 @@ export function VetShell({
               alt={currentVet.name}
               className="h-10 w-10 rounded-full object-cover"
               height={40}
-              src={currentVet.avatar}
+              src={
+                currentVet.avatar ??
+                `https://i.pravatar.cc/120?u=${encodeURIComponent(currentVet.name)}`
+              }
               width={40}
             />
           </div>

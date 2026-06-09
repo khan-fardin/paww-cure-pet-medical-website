@@ -8,6 +8,7 @@ import {
   Home,
   Menu,
   MessageSquare,
+  Stethoscope,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -18,13 +19,14 @@ import { cn } from "@/lib/utils/cn";
 
 const dockItems = [
   { href: "/mod/dashboard", icon: Home, label: "Home" },
+  { href: "/mod/consultations", icon: Stethoscope, label: "Ops" },
   { href: "/mod/vets", icon: CheckCircle2, label: "Vets" },
   { href: "/mod/flags", icon: Flag, label: "Flags" },
-  { href: "/mod/tickets", icon: MessageSquare, label: "Tickets" },
 ] as const;
 
 const menuItems = [
   ...dockItems,
+  { href: "/mod/tickets", icon: MessageSquare, label: "Tickets" },
   { href: "/mod/content", icon: FileText, label: "Content" },
 ] as const;
 

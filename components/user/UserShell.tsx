@@ -14,7 +14,6 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { MobileUserNav } from "@/components/user/MobileUserNav";
-import { demoPets, demoUser } from "@/lib/demo/userContent";
 
 const navItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -46,10 +45,8 @@ export function UserShell({
   children: ReactNode;
   user?: ShellUser;
 }) {
-  const fallbackPet =
-    demoPets.find((pet) => pet.id === demoUser.activePetId) ?? demoPets[0];
-  const activePet = realActivePet ?? fallbackPet;
-  const currentUser = user ?? demoUser;
+  const activePet = realActivePet;
+  const currentUser = user ?? { name: "User" };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A]">
@@ -59,9 +56,11 @@ export function UserShell({
           <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             Active pet
           </p>
-          <p className="mt-1 text-xl font-bold">{activePet.name}</p>
+          <p className="mt-1 text-xl font-bold">
+            {activePet?.name ?? "No active pet"}
+          </p>
           <p className="mt-1 text-sm font-semibold opacity-70">
-            {activePet.breed} / {activePet.weight}
+            {activePet ? `${activePet.breed} / ${activePet.weight}` : "Add a pet to start booking"}
           </p>
         </div>
 
@@ -104,7 +103,7 @@ export function UserShell({
               className="hidden rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 sm:inline-flex"
               href="/pets"
             >
-              {activePet.name}
+              {activePet?.name ?? "Pets"}
             </Link>
             <button
               className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm sm:px-4"

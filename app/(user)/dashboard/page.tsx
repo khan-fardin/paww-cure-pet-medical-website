@@ -8,10 +8,7 @@ import { usePets } from "@/lib/hooks/usePets";
 import { useConsultations } from "@/lib/hooks/useConsultations";
 import { useReminders } from "@/lib/hooks/useReminders";
 import { useDocuments } from "@/lib/hooks/useDocuments";
-import { demoVets } from "@/lib/demo/publicContent";
-import {
-  dashboardTimeline,
-} from "@/lib/demo/userContent";
+import { useVets } from "@/lib/hooks/useVets";
 
 function Card({
   children,
@@ -34,10 +31,11 @@ export default function UserDashboardPage() {
   const { consultations, loading: consultationsLoading, error: consultationsError } = useConsultations();
   const { reminders, loading: remindersLoading, error: remindersError } = useReminders();
   const { documents, loading: documentsLoading, error: documentsError } = useDocuments();
+  const { vets, loading: vetsLoading } = useVets({ limit: 3 });
 
   const activePet = pets[0];
   const upcomingConsultation = consultations.filter(c => c.status === "scheduled")[0];
-  const recommendedVets = demoVets.slice(0, 3);
+  const recentConsultations = consultations.slice(0, 4);
 
   const stats = [
     {
@@ -332,22 +330,43 @@ export default function UserDashboardPage() {
             )}
           </div>
 
-          <div className="space-y-5">
-            {dashboardTimeline.map((item) => (
-              <div className="flex gap-4" key={`${item.date}-${item.title}`}>
-                <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-emerald-500" />
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    {item.date}
-                  </p>
-                  <h3 className="mt-1 font-bold">{item.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                    {item.detail}
-                  </p>
+          {consultationsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((item) => (
+                <div
+                  className="h-16 rounded-2xl bg-slate-100 animate-pulse"
+                  key={item}
+                />
+              ))}
+            </div>
+          ) : recentConsultations.length > 0 ? (
+            <div className="space-y-5">
+              {recentConsultations.map((item) => (
+                <div className="flex gap-4" key={item._id}>
+                  <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-emerald-500" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      {new Date(item.scheduledAt).toLocaleDateString()}
+                    </p>
+                    <h3 className="mt-1 font-bold">
+                      {item.status} consultation
+                    </h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                      {item.petId?.name || "Pet"} with{" "}
+                      {item.vetId?.name || "vet"} / {item.type}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[2rem] bg-slate-50 p-6 text-center">
+              <p className="font-bold text-slate-700">No health timeline yet</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Completed consultations and prescriptions will appear here.
+              </p>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -426,27 +445,43 @@ export default function UserDashboardPage() {
             </Link>
           </div>
           <div className="space-y-4">
-            {recommendedVets.map((vet) => (
+            {vetsLoading ? (
+              [1, 2, 3].map((item) => (
+                <div
+                  className="h-20 rounded-[2rem] bg-slate-100 animate-pulse"
+                  key={item}
+                />
+              ))
+            ) : vets.length > 0 ? (
+              vets.slice(0, 3).map((vet) => (
               <Link
                 className="flex items-center gap-4 rounded-[2rem] bg-slate-50 p-4 transition hover:bg-emerald-50"
-                href={`/vets/${vet.id}`}
-                key={vet.id}
+                href={`/vets/${vet._id}`}
+                key={vet._id}
               >
                 <Image
-                  alt={vet.name}
+                  alt={vet.userId.name}
                   className="h-14 w-14 rounded-2xl object-cover"
                   height={56}
-                  src={vet.avatar}
+                  src={vet.userId.avatar || `https://i.pravatar.cc/112?u=${vet._id}`}
                   width={56}
                 />
                 <div className="min-w-0">
-                  <p className="truncate font-bold">{vet.name}</p>
+                  <p className="truncate font-bold">{vet.userId.name}</p>
                   <p className="truncate text-sm text-slate-400">
-                    {vet.specialties[0]} / {vet.rating}
+                    {vet.specializations[0] || "General care"} /{" "}
+                    {vet.averageRating || "New"}
                   </p>
                 </div>
               </Link>
-            ))}
+              ))
+            ) : (
+              <div className="rounded-[2rem] bg-slate-50 p-5 text-center">
+                <p className="text-sm font-semibold text-slate-500">
+                  No verified vets available yet
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       </div>

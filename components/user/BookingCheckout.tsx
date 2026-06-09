@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, Loader } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,12 @@ type PetOption = {
   id: string;
   name: string;
   species: string;
+};
+
+type AvailabilitySlot = {
+  end: string;
+  label: string;
+  start: string;
 };
 
 export function BookingCheckout({
@@ -26,21 +32,57 @@ export function BookingCheckout({
   vetId: string;
 }) {
   const [selectedPetId, setSelectedPetId] = useState(pets[0]?.id ?? "");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSlots() {
+      setSlotsLoading(true);
+      const response = await fetch(`/api/vets/${vetId}/availability`);
+      const payload = (await response.json().catch(() => null)) as
+        | { data?: { slots?: AvailabilitySlot[] }; message?: string }
+        | null;
+
+      if (ignore) return;
+
+      if (!response.ok) {
+        setError(payload?.message ?? "Could not load available slots.");
+        setSlots([]);
+      } else {
+        const nextSlots = payload?.data?.slots ?? [];
+        setSlots(nextSlots);
+        setSelectedSlot(nextSlots[0]?.start ?? "");
+      }
+
+      setSlotsLoading(false);
+    }
+
+    void loadSlots();
+
+    return () => {
+      ignore = true;
+    };
+  }, [vetId]);
+
   async function startPayment() {
-    setLoading(true);
     setError(null);
 
-    const scheduledAt = new Date();
-    scheduledAt.setDate(scheduledAt.getDate() + 1);
-    scheduledAt.setHours(19, 0, 0, 0);
+    if (!selectedSlot) {
+      setError("Please select an available slot.");
+      return;
+    }
+
+    setLoading(true);
 
     const response = await fetch("/api/bookings", {
       body: JSON.stringify({
         petId: selectedPetId,
-        scheduledAt: scheduledAt.toISOString(),
+        scheduledAt: selectedSlot,
         type: "video",
         vetId,
       }),
@@ -103,9 +145,39 @@ export function BookingCheckout({
         </p>
         <h2 className="mt-2 text-2xl font-bold">Select slot</h2>
         <p className="mt-2 text-slate-500">
-          {duration} minute video session. The first version books tomorrow at
-          7:00 PM while the full availability picker is being wired.
+          Choose a real {duration} minute slot from the vet&apos;s saved
+          availability.
         </p>
+        <div className="mt-4 grid gap-3">
+          {slotsLoading ? (
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500">
+              Loading available slots...
+            </div>
+          ) : slots.length === 0 ? (
+            <div className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-800">
+              No available slots right now. Please check back later.
+            </div>
+          ) : (
+            slots.slice(0, 12).map((slot) => (
+              <label
+                className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition hover:border-emerald-200 hover:bg-emerald-50"
+                key={slot.start}
+              >
+                <input
+                  checked={selectedSlot === slot.start}
+                  className="mt-1 h-4 w-4 accent-emerald-600"
+                  name="slot"
+                  onChange={() => setSelectedSlot(slot.start)}
+                  type="radio"
+                  value={slot.start}
+                />
+                <span className="text-sm font-bold text-slate-700">
+                  {slot.label}
+                </span>
+              </label>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="rounded-[2.5rem] border border-slate-100 bg-white p-7 shadow-sm">
@@ -130,7 +202,7 @@ export function BookingCheckout({
 
       <Button
         className="gap-2"
-        disabled={disabled || loading || !selectedPetId}
+        disabled={disabled || slotsLoading || loading || !selectedPetId || !selectedSlot}
         onClick={startPayment}
         type="button"
       >
