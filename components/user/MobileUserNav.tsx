@@ -6,6 +6,7 @@ import {
   CreditCard,
   FileText,
   Home,
+  LifeBuoy,
   Menu,
   Search,
   Stethoscope,
@@ -28,6 +29,7 @@ const menuItems = [
   { href: "/documents", icon: FileText, label: "Documents" },
   { href: "/reminders", icon: CalendarDays, label: "Reminders" },
   { href: "/payments", icon: CreditCard, label: "Payments" },
+  { href: "/support", icon: LifeBuoy, label: "Support" },
 ] as const;
 
 function isActivePath(pathname: string, href: string) {

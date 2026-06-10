@@ -3,13 +3,19 @@ import mongoose, { Schema, type Document } from "mongoose";
 export interface ITicket extends Document {
   subject: string;
   userId: mongoose.Types.ObjectId;
-  userType: "user" | "vet" | "admin";
-  status: "open" | "in-progress" | "closed" | "on-hold";
+  assignedModId?: mongoose.Types.ObjectId;
+  userType: "user" | "vet" | "admin" | "mod";
+  status: "open" | "in-progress" | "in-call" | "closed" | "on-hold";
   priority: "low" | "medium" | "high" | "critical";
   category: string;
   description: string;
+  callToken?: string;
+  callStartedAt?: Date;
+  callEndedAt?: Date;
+  resolvedAt?: Date;
   messages: Array<{
-    senderType: "user" | "support";
+    senderType: "user" | "support" | "system";
+    senderId?: mongoose.Types.ObjectId;
     message: string;
     timestamp: Date;
   }>;
@@ -25,14 +31,18 @@ const TicketSchema = new Schema<ITicket>(
       ref: "User",
       required: true,
     },
+    assignedModId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     userType: {
       type: String,
-      enum: ["user", "vet", "admin"],
+      enum: ["user", "vet", "admin", "mod"],
       required: true,
     },
     status: {
       type: String,
-      enum: ["open", "in-progress", "closed", "on-hold"],
+      enum: ["open", "in-progress", "in-call", "closed", "on-hold"],
       default: "open",
       index: true,
     },
@@ -44,12 +54,20 @@ const TicketSchema = new Schema<ITicket>(
     },
     category: { type: String, required: true, trim: true },
     description: { type: String, required: true },
+    callToken: String,
+    callStartedAt: Date,
+    callEndedAt: Date,
+    resolvedAt: Date,
     messages: [
       {
         senderType: {
           type: String,
-          enum: ["user", "support"],
+          enum: ["user", "support", "system"],
           required: true,
+        },
+        senderId: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
         },
         message: { type: String, required: true },
         timestamp: { type: Date, default: Date.now },
@@ -60,7 +78,16 @@ const TicketSchema = new Schema<ITicket>(
 );
 
 TicketSchema.index({ userId: 1, status: 1 });
+TicketSchema.index({ assignedModId: 1, status: 1 });
 TicketSchema.index({ status: 1, priority: -1, createdAt: -1 });
+
+const existingTicketModel = mongoose.models.Ticket as
+  | mongoose.Model<ITicket>
+  | undefined;
+
+if (existingTicketModel && !existingTicketModel.schema.path("assignedModId")) {
+  delete mongoose.models.Ticket;
+}
 
 export const Ticket =
   mongoose.models.Ticket ?? mongoose.model<ITicket>("Ticket", TicketSchema);

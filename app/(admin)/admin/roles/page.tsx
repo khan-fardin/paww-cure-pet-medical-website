@@ -1,94 +1,37 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
-  Plus,
+  CalendarDays,
+  Mail,
+  Search,
   Shield,
-  Edit,
-  ArrowUp,
-  Trash2,
-  CheckCircle,
-  Clock,
-  MoreVertical,
-  AlertCircle,
+  ShieldCheck,
+  UserRound,
+  Users,
 } from "lucide-react";
+
+import { ModeratorAssignButton } from "@/components/admin/ModeratorAssignButton";
+import { dbConnect } from "@/lib/db/connect";
+import { User } from "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Role Management | pawwcure Admin",
 };
 
-const roleAssignments = [
-  {
-    id: 1,
-    name: "Md. Karim Hassan",
-    email: "karim@moderator.com",
-    currentRole: "Moderator",
-    assignedDate: "Mar 15, 2026",
-    activity: "Flag reviews, verify vets",
-    escalations: 12,
-  },
-  {
-    id: 2,
-    name: "Sarah Thompson",
-    email: "sarah@moderator.com",
-    currentRole: "Moderator",
-    assignedDate: "Feb 8, 2026",
-    activity: "Review content, support tickets",
-    escalations: 5,
-  },
-  {
-    id: 3,
-    name: "Dr. Farzana Khan",
-    email: "farzana@veterinary.com",
-    currentRole: "Vet + Moderator",
-    assignedDate: "Jan 22, 2026",
-    activity: "Full moderator + vet services",
-    escalations: 3,
-  },
-  {
-    id: 4,
-    name: "Ahmad Ali Khan",
-    email: "ahmad@moderator.com",
-    currentRole: "Moderator",
-    assignedDate: "Apr 10, 2026",
-    activity: "Content review, user support",
-    escalations: 8,
-  },
-];
+type AdminRolesPageProps = {
+  searchParams?: Promise<{
+    q?: string;
+  }>;
+};
 
-const auditLog = [
-  {
-    id: 1,
-    action: "Promoted to Moderator",
-    user: "Md. Karim Hassan",
-    by: "Admin System",
-    date: "Mar 15, 2026",
-    time: "10:30 AM",
-  },
-  {
-    id: 2,
-    action: "Role changed: Moderator → Admin",
-    user: "Sarah Thompson",
-    by: "Super Admin",
-    date: "Feb 20, 2026",
-    time: "3:45 PM",
-  },
-  {
-    id: 3,
-    action: "Assigned Moderator role",
-    user: "Dr. Farzana Khan",
-    by: "Admin System",
-    date: "Jan 22, 2026",
-    time: "11:15 AM",
-  },
-  {
-    id: 4,
-    action: "Role revoked",
-    user: "John Smith",
-    by: "Super Admin",
-    date: "Jan 15, 2026",
-    time: "2:20 PM",
-  },
-];
+type RoleUser = {
+  _id: { toString(): string };
+  createdAt: Date;
+  email: string;
+  isActive: boolean;
+  name: string;
+  phone?: string;
+  role: "admin" | "mod" | "user" | "vet";
+};
 
 function Card({
   children,
@@ -106,196 +49,252 @@ function Card({
   );
 }
 
-export default function AdminRolesPage() {
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function roleClass(role: RoleUser["role"]) {
+  if (role === "admin") return "bg-rose-100 text-rose-700";
+  if (role === "mod") return "bg-amber-100 text-amber-700";
+  if (role === "vet") return "bg-teal-100 text-teal-700";
+  return "bg-emerald-100 text-emerald-700";
+}
+
+export default async function AdminRolesPage({
+  searchParams,
+}: AdminRolesPageProps) {
+  const filters = (await searchParams) ?? {};
+  const q = filters.q?.trim() ?? "";
+
+  await dbConnect();
+
+  const userSearchQuery: Record<string, unknown> = q
+    ? {
+        $or: [
+          { email: { $regex: q, $options: "i" } },
+          { name: { $regex: q, $options: "i" } },
+          { phone: { $regex: q, $options: "i" } },
+        ],
+      }
+    : { role: "user" };
+
+  const [
+    admins,
+    moderators,
+    users,
+    vets,
+    moderatorList,
+    searchResults,
+  ] = await Promise.all([
+    User.countDocuments({ role: "admin" }),
+    User.countDocuments({ role: "mod" }),
+    User.countDocuments({ role: "user" }),
+    User.countDocuments({ role: "vet" }),
+    User.find({ role: "mod" })
+      .select("name email phone role isActive createdAt")
+      .sort({ updatedAt: -1 })
+      .limit(20)
+      .lean(),
+    User.find(userSearchQuery)
+      .select("name email phone role isActive createdAt")
+      .sort(q ? { role: 1, createdAt: -1 } : { createdAt: -1 })
+      .limit(20)
+      .lean(),
+  ]);
+
+  const moderatorsTyped = moderatorList as unknown as RoleUser[];
+  const usersTyped = searchResults as unknown as RoleUser[];
+
   return (
     <section className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 inline-flex rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
             Role Management
           </div>
-          <h1 className="text-4xl font-bold">Admin Roles</h1>
-          <p className="mt-2 text-slate-500">
-            Manage moderator assignments and role-based access control
+          <h1 className="text-4xl font-bold">Moderator Authority</h1>
+          <p className="mt-2 max-w-2xl text-slate-500">
+            Search real user accounts and assign moderator access. Once
+            assigned, the account role becomes mod in the database.
           </p>
         </div>
-        <Link
-          className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-6 py-4 text-sm font-bold text-white transition hover:bg-rose-700"
-          href="#"
-        >
-          <Plus className="h-4 w-4" />
-          Assign Role
-        </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Total Admins
-          </p>
-          <p className="text-4xl font-bold mb-2">1</p>
-          <p className="text-xs text-slate-500">Super Admin</p>
-        </Card>
-
-        <Card>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Moderators
-          </p>
-          <p className="text-4xl font-bold mb-2">4</p>
-          <p className="text-xs text-slate-500">Active roles assigned</p>
-        </Card>
-
-        <Card>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-            Role Changes
-          </p>
-          <p className="text-4xl font-bold mb-2">12</p>
-          <p className="text-xs text-slate-500">This month</p>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Stat icon={ShieldCheck} label="Admins" tone="rose" value={admins} />
+        <Stat icon={Shield} label="Moderators" tone="amber" value={moderators} />
+        <Stat icon={Users} label="Users" tone="emerald" value={users} />
+        <Stat icon={UserRound} label="Vets" tone="teal" value={vets} />
       </div>
 
       <Card>
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Team
-            </p>
-            <h2 className="mt-1 text-2xl font-bold">Role Assignments</h2>
+        <div className="mb-6">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Assign moderator
+          </p>
+          <h2 className="mt-1 text-2xl font-bold">Find User By Email</h2>
+        </div>
+
+        <form
+          action="/admin/roles"
+          className="grid gap-3 rounded-[2rem] bg-slate-50 p-4 lg:grid-cols-[1fr_auto]"
+        >
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              className="min-w-0 flex-1 bg-transparent text-sm font-bold placeholder-slate-400 outline-none"
+              defaultValue={q}
+              name="q"
+              placeholder="Search email, name, or phone..."
+              type="text"
+            />
           </div>
+          <button
+            className="rounded-2xl bg-rose-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-rose-700"
+            type="submit"
+          >
+            Search
+          </button>
+        </form>
+
+        <div className="mt-6 divide-y divide-slate-100">
+          {usersTyped.map((user) => {
+            const id = user._id.toString();
+            const isAssignable = user.role === "user";
+
+            return (
+              <div
+                className="grid gap-5 py-5 lg:grid-cols-[1fr_180px]"
+                key={id}
+              >
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-lg font-bold text-slate-950">
+                      {user.name}
+                    </h3>
+                    <span
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${roleClass(
+                        user.role
+                      )}`}
+                    >
+                      {user.role}
+                    </span>
+                    {!user.isActive ? (
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-red-700">
+                        inactive
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{user.email}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CalendarDays className="h-3 w-3 shrink-0" />
+                      Joined {formatDate(user.createdAt)}
+                    </span>
+                  </div>
+
+                  {!isAssignable ? (
+                    <p className="mt-3 text-xs font-semibold text-slate-400">
+                      Only regular user accounts can be converted to moderator
+                      here.
+                    </p>
+                  ) : null}
+                </div>
+
+                <ModeratorAssignButton disabled={!isAssignable} userId={id} />
+              </div>
+            );
+          })}
+
+          {usersTyped.length === 0 ? (
+            <div className="py-10 text-center">
+              <UserRound className="mx-auto h-10 w-10 text-slate-300" />
+              <p className="mt-3 font-bold text-slate-700">No users found</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Search by the exact email or part of the email address.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="mb-6">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Current moderators
+          </p>
+          <h2 className="mt-1 text-2xl font-bold">Moderator Accounts</h2>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {roleAssignments.map((role) => (
+          {moderatorsTyped.map((moderator) => (
             <div
-              className="hover:bg-slate-50 transition p-6 flex items-center justify-between gap-4"
-              key={role.id}
+              className="grid gap-3 py-5 md:grid-cols-[1fr_auto]"
+              key={moderator._id.toString()}
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-bold text-slate-900">{role.name}</h3>
-                  <span className="inline-flex rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
-                    {role.currentRole}
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-bold text-slate-950">
+                    {moderator.name}
+                  </h3>
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                    mod
                   </span>
                 </div>
-                <div className="grid gap-1 text-xs text-slate-500">
-                  <p>{role.email}</p>
-                  <p>{role.activity}</p>
-                  <p>Assigned: {role.assignedDate}</p>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-                  Escalations
-                </p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {role.escalations}
+                <p className="mt-2 text-sm text-slate-500">
+                  {moderator.email}
                 </p>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50"
-                  title="Edit role"
-                  type="button"
-                >
-                  <Edit className="h-4 w-4" />
-                </button>
-                <button
-                  className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50"
-                  title="Promote to admin"
-                  type="button"
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </button>
-                <div className="relative group">
-                  <button
-                    className="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-600 transition hover:bg-slate-50"
-                    type="button"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-                  <div className="absolute right-0 top-full z-10 mt-2 w-40 rounded-2xl border border-slate-100 bg-white shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition">
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-slate-600 hover:bg-slate-50 rounded-t-2xl">
-                      View activity
-                    </button>
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-blue-700 hover:bg-blue-50">
-                      Modify permissions
-                    </button>
-                    <button className="block w-full px-4 py-3 text-left text-sm font-bold text-red-700 hover:bg-red-50 rounded-b-2xl">
-                      Revoke role
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm font-bold text-slate-400 md:text-right">
+                Since {formatDate(moderator.createdAt)}
+              </p>
             </div>
           ))}
-        </div>
-      </Card>
 
-      <Card>
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Audit
+          {moderatorsTyped.length === 0 ? (
+            <p className="py-6 text-sm font-semibold text-slate-500">
+              No moderator accounts assigned yet.
             </p>
-            <h2 className="mt-1 text-2xl font-bold">Role Change History</h2>
-          </div>
-          <button className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
-            Export Log
-          </button>
-        </div>
-
-        <div className="space-y-2">
-          {auditLog.map((log) => (
-            <div
-              className="rounded-[2rem] border border-slate-100 hover:border-rose-200 hover:bg-rose-50 transition p-5 flex items-start gap-4"
-              key={log.id}
-            >
-              <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 shrink-0">
-                {log.action.includes("Promoted") || log.action.includes("Admin") ? (
-                  <ArrowUp className="h-5 w-5 text-blue-600" />
-                ) : log.action.includes("revoked") ? (
-                  <Trash2 className="h-5 w-5 text-red-600" />
-                ) : (
-                  <CheckCircle className="h-5 w-5 text-slate-600" />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-slate-900">{log.action}</p>
-                <div className="mt-1 grid gap-1 text-xs text-slate-500">
-                  <p>User: {log.user}</p>
-                  <p>By: {log.by}</p>
-                  <p>
-                    {log.date} at {log.time}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card className="border border-blue-200 bg-blue-50">
-        <div className="flex items-start gap-4">
-          <Shield className="h-6 w-6 text-blue-700 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bold text-blue-900">Role Permissions</p>
-            <p className="mt-2 text-sm text-blue-800">
-              <strong>Super Admin:</strong> Full platform access, manage admins
-              and moderators
-            </p>
-            <p className="mt-2 text-sm text-blue-800">
-              <strong>Admin:</strong> Manage users, vets, payments, and settings
-            </p>
-            <p className="mt-2 text-sm text-blue-800">
-              <strong>Moderator:</strong> Verify vets, flag content, support
-              tickets
-            </p>
-          </div>
+          ) : null}
         </div>
       </Card>
     </section>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  label,
+  tone,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  tone: "amber" | "emerald" | "rose" | "teal";
+  value: number;
+}) {
+  const tones = {
+    amber: "border-amber-100 bg-amber-50 text-amber-900",
+    emerald: "border-emerald-100 bg-emerald-50 text-emerald-900",
+    rose: "border-rose-100 bg-rose-50 text-rose-900",
+    teal: "border-teal-100 bg-teal-50 text-teal-900",
+  };
+
+  return (
+    <div className={`rounded-[2rem] border p-5 ${tones[tone]}`}>
+      <Icon className="mb-4 h-5 w-5 opacity-70" />
+      <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold">{value}</p>
+    </div>
   );
 }

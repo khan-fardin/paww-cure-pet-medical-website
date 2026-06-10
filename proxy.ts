@@ -27,6 +27,7 @@ const ROLE_PREFIXES: Record<TokenPayload["role"], string[]> = {
     "/documents",
     "/reminders",
     "/payments",
+    "/support",
   ],
   vet: ["/vet"],
   mod: ["/mod"],

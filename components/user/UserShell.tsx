@@ -5,6 +5,7 @@ import {
   CreditCard,
   FileText,
   Home,
+  LifeBuoy,
   Search,
   Stethoscope,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/documents", icon: FileText, label: "Documents" },
   { href: "/reminders", icon: CalendarDays, label: "Reminders" },
   { href: "/payments", icon: CreditCard, label: "Payments" },
+  { href: "/support", icon: LifeBuoy, label: "Support" },
 ] as const;
 
 type ShellPet = {
