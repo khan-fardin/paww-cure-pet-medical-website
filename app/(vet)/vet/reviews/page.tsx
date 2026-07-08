@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Flag, Star } from "lucide-react";
 
 import { getSession } from "@/lib/auth/session";
+import { VetReviewResponse } from "@/components/vet/VetReviewResponse";
 import { dbConnect } from "@/lib/db/connect";
 import { Review } from "@/lib/db/models/Review";
 import "@/lib/db/models/User";
@@ -14,8 +15,12 @@ export const metadata: Metadata = {
 type ReviewRow = {
   _id: { toString(): string };
   comment: string;
+  communication?: number;
   createdAt: Date;
+  professionalism?: number;
+  punctuality?: number;
   rating: number;
+  response?: { vetResponse?: string };
   title: string;
   userId?: {
     name?: string;
@@ -133,6 +138,20 @@ export default async function ReviewsPage() {
                     {review.title}
                   </p>
                   <p className="mt-2 text-slate-600">{review.comment}</p>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <Score label="Communication" value={review.communication} />
+                    <Score
+                      label="Professionalism"
+                      value={review.professionalism}
+                    />
+                    <Score label="Punctuality" value={review.punctuality} />
+                  </div>
+
+                  <VetReviewResponse
+                    existingResponse={review.response?.vetResponse}
+                    reviewId={review._id.toString()}
+                  />
                 </div>
 
                 <button
@@ -148,5 +167,16 @@ export default async function ReviewsPage() {
         )}
       </div>
     </section>
+  );
+}
+
+function Score({ label, value }: { label: string; value?: number }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 font-bold text-slate-800">{value ?? "-"} / 5</p>
+    </div>
   );
 }

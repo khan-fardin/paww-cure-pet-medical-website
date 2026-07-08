@@ -14,6 +14,7 @@ export interface IDocument extends MongooseDocument {
   title: string;
   description?: string;
   fileUrl: string;
+  s3Key?: string;
   fileSize: number; // in bytes
   mimeType: string;
   uploadedBy: mongoose.Types.ObjectId; // vet or user
@@ -52,6 +53,7 @@ const DocumentSchema = new Schema<IDocument>(
     title: { type: String, required: true, trim: true },
     description: String,
     fileUrl: { type: String, required: true },
+    s3Key: String,
     fileSize: { type: Number, required: true, min: 0 },
     mimeType: { type: String, required: true },
     uploadedBy: {
@@ -74,6 +76,14 @@ DocumentSchema.index({ userId: 1, petId: 1 });
 DocumentSchema.index({ petId: 1 });
 DocumentSchema.index({ type: 1 });
 DocumentSchema.index({ uploadedBy: 1 });
+
+const existingDocumentModel = mongoose.models.Document as
+  | mongoose.Model<IDocument>
+  | undefined;
+
+if (existingDocumentModel && !existingDocumentModel.schema.path("s3Key")) {
+  delete mongoose.models.Document;
+}
 
 export const Document =
   mongoose.models.Document ??

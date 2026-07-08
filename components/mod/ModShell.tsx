@@ -1,5 +1,4 @@
 import {
-  Bell,
   CheckCircle2,
   FileText,
   Flag,
@@ -14,6 +13,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileModNav } from "@/components/mod/MobileModNav";
 
 const navItems = [
@@ -73,13 +73,7 @@ export function ModShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm sm:px-4"
-              type="button"
-            >
-              <Bell aria-hidden="true" className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-            </button>
+            <NotificationBar />
             <Image
               alt="Moderator"
               className="h-10 w-10 rounded-full object-cover"

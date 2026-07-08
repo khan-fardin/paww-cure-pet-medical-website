@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
 
 const SHARED_AUTHENTICATED = [
   "/consultation",
+  "/support-call",
   "/settings",
   "/notifications",
   "/vets",
@@ -28,6 +29,8 @@ const ROLE_PREFIXES: Record<TokenPayload["role"], string[]> = {
     "/reminders",
     "/payments",
     "/support",
+    "/my-reviews",
+    "/profile",
   ],
   vet: ["/vet"],
   mod: ["/mod"],

@@ -14,10 +14,14 @@ export type VetApplicationItem = {
   consultationFee: number;
   createdAt: string;
   degreeDocumentName?: string;
+  degreeDocumentPublicId?: string;
+  degreeDocumentResourceType?: "image" | "raw" | "video";
   email: string;
   experience: number;
   isVerified: boolean;
   licenseDocumentName?: string;
+  licenseDocumentPublicId?: string;
+  licenseDocumentResourceType?: "image" | "raw" | "video";
   licenseNumber: string;
   name: string;
   phone?: string;
@@ -153,8 +157,16 @@ export function VetReviewQueue({ vets }: { vets: VetApplicationItem[] }) {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <DocButton label={vet.licenseDocumentName ?? "License"} />
-                      <DocButton label={vet.degreeDocumentName ?? "Degree"} />
+                      <DocButton
+                        label={vet.licenseDocumentName ?? "License"}
+                        publicId={vet.licenseDocumentPublicId}
+                        resourceType={vet.licenseDocumentResourceType}
+                      />
+                      <DocButton
+                        label={vet.degreeDocumentName ?? "Degree"}
+                        publicId={vet.degreeDocumentPublicId}
+                        resourceType={vet.degreeDocumentResourceType}
+                      />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
@@ -229,13 +241,33 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DocButton({ label }: { label: string }) {
+function DocButton({
+  label,
+  publicId,
+  resourceType,
+}: {
+  label: string;
+  publicId?: string;
+  resourceType?: "image" | "raw" | "video";
+}) {
+  if (!publicId) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-400">
+        <FileText className="h-4 w-4" />
+        {label}
+      </span>
+    );
+  }
+
   return (
-    <span
-      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
+    <a
+      className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+      href={`/api/media/view?publicId=${encodeURIComponent(publicId)}&resourceType=${resourceType ?? "image"}`}
+      rel="noreferrer"
+      target="_blank"
     >
       <FileText className="h-4 w-4" />
       {label}
-    </span>
+    </a>
   );
 }

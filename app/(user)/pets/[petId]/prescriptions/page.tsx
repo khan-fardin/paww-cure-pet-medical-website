@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
+import Link from "next/link";
+import { Download } from "lucide-react";
 
 import { UserPageScaffold } from "@/components/user/UserPageScaffold";
 import { getSession } from "@/lib/auth/session";
@@ -93,10 +95,19 @@ export default async function PetPrescriptionsPage({
                     {prescription.medications.length === 1 ? "" : "s"}
                   </h2>
                 </div>
-                <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                  Valid until{" "}
-                  {new Date(prescription.expiryDate).toLocaleDateString()}
-                </p>
+                <div className="flex flex-col gap-2">
+                  <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                    Valid until{" "}
+                    {new Date(prescription.expiryDate).toLocaleDateString()}
+                  </p>
+                  <Link
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white"
+                    href={`/api/prescriptions/${prescription._id.toString()}/pdf`}
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Link>
+                </div>
               </div>
 
               <div className="mt-5 space-y-3">

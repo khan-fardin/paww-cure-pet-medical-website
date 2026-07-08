@@ -5,11 +5,6 @@ import { dbConnect } from "@/lib/db/connect";
 import { Reminder } from "@/lib/db/models/Reminder";
 import { Pet } from "@/lib/db/models/Pet";
 
-// TODO: Implement push notifications for reminders
-// TODO: Add email reminder scheduling
-// TODO: Implement recurring reminder handling
-// TODO: Add reminder snooze functionality
-
 const createReminderSchema = z.object({
   petId: z.string().min(1),
   type: z.enum(["medicine", "vaccination", "checkup", "follow-up", "other"]),
@@ -90,7 +85,6 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
     if (!pet || pet.userId.toString() !== payload.userId) {
       return NextResponse.json(

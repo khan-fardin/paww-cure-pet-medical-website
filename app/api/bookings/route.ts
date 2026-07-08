@@ -144,8 +144,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const platformFee = Math.round(vetProfile.consultationFee * 0.12);
-    const amount = vetProfile.consultationFee + platformFee;
+    const amount = vetProfile.consultationFee;
     const tranId = `paww_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
     const appUrl = getAppUrl();
 
@@ -168,9 +167,12 @@ export async function POST(req: NextRequest) {
       currency: "BDT",
       gateway: "sslcommerz",
       petId: pet._id,
+      platformFee: 0,
+      payoutStatus: "pending",
       status: "pending",
       tranId,
       userId: user._id,
+      vetPayout: 0,
       vetId: vetUserId,
     });
 

@@ -21,6 +21,10 @@ export function createAgoraChannelName(consultationId: string) {
   return `pawwcure-${consultationId}`.slice(0, 63);
 }
 
+export function createAgoraSupportChannelName(ticketId: string) {
+  return `pawwcure-support-${ticketId}`.slice(0, 63);
+}
+
 export function createAgoraRtcToken({
   channelName,
   userId,

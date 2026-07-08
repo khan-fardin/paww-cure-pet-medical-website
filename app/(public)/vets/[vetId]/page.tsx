@@ -3,8 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import mongoose from "mongoose";
+import { BadgeCheck, MessageCircle, Star } from "lucide-react";
 
+import { PublicReviewActions } from "@/components/public/PublicReviewActions";
+import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
+import { Review } from "@/lib/db/models/Review";
 import "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
 
@@ -27,9 +31,25 @@ type PublicVetProfile = {
   specializations: string[];
   totalReviews: number;
   userId?: {
+    _id?: { toString(): string };
     avatar?: string;
     name?: string;
   };
+};
+
+type PublicReview = {
+  _id: { toString(): string };
+  comment: string;
+  communication?: number;
+  createdAt: Date;
+  helpful: number;
+  helpfulBy?: { toString(): string }[];
+  professionalism?: number;
+  punctuality?: number;
+  rating: number;
+  response?: { vetResponse?: string };
+  title: string;
+  userId?: { avatar?: string; name?: string };
 };
 
 async function getVetProfile(vetId: string) {
@@ -60,7 +80,7 @@ export async function generateMetadata({
 
 export default async function VetProfilePage({ params }: VetProfilePageProps) {
   const { vetId } = await params;
-  const vet = await getVetProfile(vetId);
+  const [vet, session] = await Promise.all([getVetProfile(vetId), getSession()]);
 
   if (!vet) {
     notFound();
@@ -72,6 +92,16 @@ export default async function VetProfilePage({ params }: VetProfilePageProps) {
   const availability = firstSlot
     ? `${firstSlot.day}, ${firstSlot.startTime}-${firstSlot.endTime}`
     : "Availability shared after booking request";
+  const reviews = vet.userId?._id
+    ? ((await Review.find({
+        isVisible: true,
+        vetId: vet.userId._id.toString(),
+      })
+        .populate("userId", "name avatar")
+        .sort({ createdAt: -1 })
+        .limit(12)
+        .lean()) as unknown as PublicReview[])
+    : [];
 
   return (
     <section className="px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
@@ -195,7 +225,161 @@ export default async function VetProfilePage({ params }: VetProfilePageProps) {
             </div>
           </div>
         </div>
+
+        <div className="mt-10 rounded-[2rem] bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:rounded-[3rem] sm:p-8">
+          <div className="grid gap-6 border-b border-slate-100 pb-7 lg:grid-cols-[260px_1fr]">
+            <div className="rounded-[2rem] bg-emerald-950 p-6 text-white">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/70">
+                Verified rating
+              </p>
+              <div className="mt-3 flex items-end gap-2">
+                <p className="text-5xl font-bold">{vet.averageRating || "0.0"}</p>
+                <p className="pb-1 text-sm text-emerald-100/70">out of 5</p>
+              </div>
+              <div className="mt-3 flex gap-1">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star
+                    className={`h-4 w-4 ${
+                      index < Math.round(vet.averageRating)
+                        ? "fill-amber-400 text-amber-400"
+                        : "text-white/20"
+                    }`}
+                    key={index}
+                  />
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-emerald-100/70">
+                {reviews.length} published verified review
+                {reviews.length === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                Consultation feedback
+              </p>
+              <h2 className="mt-2 text-3xl font-bold">What Pet Users Say</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-500">
+                Every published review is connected to a completed pawwcure
+                consultation. Helpful votes and reports are monitored.
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <ReviewMetric
+                  label="Communication"
+                  value={averageScore(reviews, "communication")}
+                />
+                <ReviewMetric
+                  label="Professional"
+                  value={averageScore(reviews, "professionalism")}
+                />
+                <ReviewMetric
+                  label="Punctuality"
+                  value={averageScore(reviews, "punctuality")}
+                />
+              </div>
+            </div>
+          </div>
+
+          {reviews.length > 0 ? (
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {reviews.map((review) => (
+                <article
+                  className="flex flex-col rounded-[2rem] border border-slate-100 bg-[#FAFAFA] p-5 sm:p-6"
+                  key={review._id.toString()}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Image
+                        alt={review.userId?.name ?? "Verified user"}
+                        className="h-11 w-11 rounded-full object-cover"
+                        height={44}
+                        src={
+                          review.userId?.avatar ??
+                          `https://i.pravatar.cc/88?u=${review._id.toString()}`
+                        }
+                        width={44}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-900">
+                          {review.userId?.name ?? "Verified user"}
+                        </p>
+                        <p className="flex items-center gap-1 text-xs font-bold text-emerald-700">
+                          <BadgeCheck className="h-3.5 w-3.5" />
+                          Verified consultation
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 rounded-full bg-white px-3 py-1.5 shadow-sm">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="text-sm font-bold">{review.rating}.0</span>
+                    </div>
+                  </div>
+                  <h3 className="mt-4 text-lg font-bold">{review.title}</h3>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600 sm:text-base">
+                    {review.comment}
+                  </p>
+                  <p className="mt-4 text-xs font-bold text-slate-400">
+                    {new Date(review.createdAt).toLocaleDateString()}
+                  </p>
+
+                  {review.response?.vetResponse ? (
+                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                      <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        Response from {name}
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-emerald-900">
+                        {review.response.vetResponse}
+                      </p>
+                    </div>
+                  ) : null}
+                  <PublicReviewActions
+                    helpful={review.helpful ?? 0}
+                    initiallyHelpful={Boolean(
+                      session &&
+                        review.helpfulBy?.some(
+                          (userId) => userId.toString() === session.userId
+                        )
+                    )}
+                    reviewId={review._id.toString()}
+                  />
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-8 text-center">
+              <p className="font-bold text-slate-700">No reviews yet</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Verified consultation feedback will appear here.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </section>
+  );
+}
+
+function averageScore(
+  reviews: PublicReview[],
+  key: "communication" | "professionalism" | "punctuality"
+) {
+  const values = reviews
+    .map((review) => review[key])
+    .filter((value): value is number => typeof value === "number");
+  if (values.length === 0) return "0.0";
+  return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(
+    1
+  );
+}
+
+function ReviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl bg-slate-50 p-3 text-center sm:p-4">
+      <p className="truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold text-slate-900">{value}</p>
+    </div>
   );
 }

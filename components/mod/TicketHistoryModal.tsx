@@ -5,6 +5,8 @@ import { Eye, X } from "lucide-react";
 
 type TicketHistoryModalProps = {
   category: string;
+  callEndedAt?: string;
+  callStartedAt?: string;
   createdAt: string;
   description: string;
   messages: {
@@ -13,6 +15,7 @@ type TicketHistoryModalProps = {
     timestamp: string;
   }[];
   priority: string;
+  moderatorNotes?: string;
   resolvedAt?: string;
   subject: string;
   userEmail?: string;
@@ -22,9 +25,12 @@ type TicketHistoryModalProps = {
 
 export function TicketHistoryModal({
   category,
+  callEndedAt,
+  callStartedAt,
   createdAt,
   description,
   messages,
+  moderatorNotes,
   priority,
   resolvedAt,
   subject,
@@ -77,6 +83,14 @@ export function TicketHistoryModal({
                 label="Resolved"
                 value={resolvedAt ? new Date(resolvedAt).toLocaleString() : "N/A"}
               />
+              <Info
+                label="Call started"
+                value={callStartedAt ? new Date(callStartedAt).toLocaleString() : "No call"}
+              />
+              <Info
+                label="Call ended"
+                value={callEndedAt ? new Date(callEndedAt).toLocaleString() : "No call"}
+              />
             </div>
 
             <div className="mt-5 rounded-2xl bg-slate-50 p-4">
@@ -87,6 +101,17 @@ export function TicketHistoryModal({
                 {description}
               </p>
             </div>
+
+            {moderatorNotes ? (
+              <div className="mt-5 rounded-2xl bg-amber-50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                  Internal moderator notes
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-amber-950">
+                  {moderatorNotes}
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-5 space-y-2">
               {messages.map((message, index) => (

@@ -18,9 +18,6 @@ const updatePetSchema = z.object({
   lastVaccineDate: z.string().datetime().optional(),
 });
 
-// TODO: Add activity logging for pet updates
-// TODO: Implement soft delete option
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -57,7 +54,7 @@ export async function GET(
       );
     }
 
-    // Check usership or vet access
+    // Check access for the pet's user, assigned vets, or admins.
     if (
       pet.userId.toString() !== payload.userId &&
       payload.role !== "vet" &&
@@ -230,8 +227,6 @@ export async function DELETE(
     // Soft delete by marking as inactive
     pet.isActive = false;
     await pet.save();
-
-    // TODO: Handle cascade deletion - cancel pending consultations, archive documents
 
     return NextResponse.json({
       success: true,

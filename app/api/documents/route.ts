@@ -1,14 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyToken } from "@/lib/auth/jwt";
+import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
 import { Document } from "@/lib/db/models/Document";
 import { Pet } from "@/lib/db/models/Pet";
-
-// TODO: Implement S3 file upload
-// TODO: Add file type validation and virus scanning
-// TODO: Implement document encryption at rest
-// TODO: Add document sharing permissions
 
 const createDocumentSchema = z.object({
   petId: z.string().min(1),
@@ -23,31 +19,32 @@ const createDocumentSchema = z.object({
   ]),
   title: z.string().min(1).max(200),
   description: z.string().optional(),
-  fileUrl: z.string().url(),
+  s3Key: z.string().min(3),
   fileSize: z.number().positive(),
   mimeType: z.string(),
+  relatedConsultationId: z.string().optional(),
   tags: z.array(z.string()).optional(),
 });
 
 export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.get("access_token")?.value;
-
-    if (!token) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json(
         { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
 
-    const payload = await verifyToken(token);
-
     const searchParams = req.nextUrl.searchParams;
     const petId = searchParams.get("petId");
 
     await dbConnect();
 
-    const query: Record<string, unknown> = { userId: payload.userId };
+    const query: Record<string, unknown> =
+      session.role === "vet"
+        ? { uploadedBy: session.userId }
+        : { userId: session.userId };
 
     if (petId) {
       query.petId = petId;
@@ -73,16 +70,13 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get("access_token")?.value;
-
-    if (!token) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json(
         { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
-
-    const payload = await verifyToken(token);
 
     const body = await req.json();
     const parsed = createDocumentSchema.safeParse(body);
@@ -99,25 +93,45 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
-    if (!pet || pet.userId.toString() !== payload.userId) {
+    if (!pet) {
       return NextResponse.json(
-        { success: false, message: "Pet not found or not yours" },
+        { success: false, message: "Pet not found" },
         { status: 404 }
       );
     }
 
+    const isOwner = pet.userId.toString() === session.userId;
+    const isAssignedVet =
+      session.role === "vet" &&
+      parsed.data.relatedConsultationId &&
+      Boolean(
+        await Consultation.exists({
+          _id: parsed.data.relatedConsultationId,
+          petId: pet._id,
+          vetId: session.userId,
+        })
+      );
+
+    if (!isOwner && !isAssignedVet) {
+      return NextResponse.json(
+        { success: false, message: "You cannot attach files to this pet" },
+        { status: 403 }
+      );
+    }
+
     const document = await Document.create({
-      userId: payload.userId,
+      userId: pet.userId,
       petId: parsed.data.petId,
       type: parsed.data.type,
       title: parsed.data.title,
       description: parsed.data.description,
-      fileUrl: parsed.data.fileUrl,
+      fileUrl: `s3://${process.env.S3_BUCKET_NAME}/${parsed.data.s3Key}`,
+      s3Key: parsed.data.s3Key,
       fileSize: parsed.data.fileSize,
       mimeType: parsed.data.mimeType,
-      uploadedBy: payload.userId,
+      uploadedBy: session.userId,
+      relatedConsultationId: parsed.data.relatedConsultationId,
       tags: parsed.data.tags || [],
     });
 

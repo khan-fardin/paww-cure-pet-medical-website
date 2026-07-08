@@ -2,10 +2,14 @@ import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IArticle extends Document {
   title: string;
+  slug?: string;
   author: string;
   content: string;
   category: string;
   summary: string;
+  heroImage?: string;
+  tags: string[];
+  views: number;
   wordCount: number;
   status: "draft" | "submitted" | "published" | "rejected";
   submittedDate?: Date;
@@ -18,10 +22,14 @@ export interface IArticle extends Document {
 const ArticleSchema = new Schema<IArticle>(
   {
     title: { type: String, required: true, trim: true },
+    slug: { type: String, unique: true, sparse: true, trim: true, lowercase: true },
     author: { type: String, required: true, trim: true },
     content: { type: String, required: true },
     category: { type: String, required: true, trim: true },
     summary: { type: String, required: true },
+    heroImage: String,
+    tags: [String],
+    views: { type: Number, default: 0, min: 0 },
     wordCount: { type: Number, required: true, min: 0 },
     status: {
       type: String,

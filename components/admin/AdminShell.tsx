@@ -1,6 +1,5 @@
 import {
   TrendingUp,
-  Bell,
   CreditCard,
   Home,
   Settings,
@@ -8,12 +7,14 @@ import {
   Users,
   BarChart3,
   FileText,
+  History,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileAdminNav } from "@/components/admin/MobileAdminNav";
 
 const navItems = [
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/vets", icon: Sliders, label: "Vets" },
   { href: "/admin/content", icon: FileText, label: "Content" },
+  { href: "/admin/review-audit", icon: History, label: "Review Audit" },
   { href: "/admin/payments", icon: CreditCard, label: "Payments" },
   { href: "/admin/roles", icon: BarChart3, label: "Roles" },
   { href: "/admin/analytics", icon: TrendingUp, label: "Analytics" },
@@ -75,13 +77,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm sm:px-4"
-              type="button"
-            >
-              <Bell aria-hidden="true" className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-            </button>
+            <NotificationBar />
             <Image
               alt="Admin"
               className="h-10 w-10 rounded-full object-cover"

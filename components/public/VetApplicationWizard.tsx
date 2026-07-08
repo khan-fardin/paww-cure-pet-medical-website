@@ -5,6 +5,10 @@ import Link from "next/link";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+import {
+  CloudinaryUpload,
+  type CloudinaryAsset,
+} from "@/components/ui/CloudinaryUpload";
 import { Input, Textarea } from "@/components/ui/Input";
 import { cn } from "@/lib/utils/cn";
 
@@ -20,17 +24,23 @@ type VetApplicationDraft = {
   clinicProvince: string;
   consultFee: string;
   degreeFileName: string;
+  degreePublicId: string;
+  degreeResourceType: CloudinaryAsset["resourceType"] | "";
   email: string;
   experience: string;
   expiryDate: string;
   issuingAuthority: string;
   languages: string;
   licenseFileName: string;
+  licensePublicId: string;
+  licenseResourceType: CloudinaryAsset["resourceType"] | "";
   licenseNumber: string;
   name: string;
   password: string;
   phone: string;
   profilePhotoName: string;
+  profilePhotoPublicId: string;
+  profilePhotoUrl: string;
   specialties: string[];
 };
 
@@ -45,17 +55,23 @@ const initialDraft: VetApplicationDraft = {
   clinicProvince: "",
   consultFee: "",
   degreeFileName: "",
+  degreePublicId: "",
+  degreeResourceType: "",
   email: "",
   experience: "",
   expiryDate: "",
   issuingAuthority: "",
   languages: "",
   licenseFileName: "",
+  licensePublicId: "",
+  licenseResourceType: "",
   licenseNumber: "",
   name: "",
   password: "",
   phone: "",
   profilePhotoName: "",
+  profilePhotoPublicId: "",
+  profilePhotoUrl: "",
   specialties: [],
 };
 
@@ -602,77 +618,87 @@ export function VetApplicationWizard() {
                     Upload clear scans of your credentials. Accepted formats: JPG, PNG, PDF
                   </p>
                   <FieldLabel label="Profile photo *">
-                    <div className="space-y-2">
-                      <Input
-                        accept=".jpg,.jpeg,.png,.webp"
-                        onChange={(event) =>
-                          updateDraft(
-                            "profilePhotoName",
-                            event.target.files?.[0]?.name ?? "",
-                          )
-                        }
-                        required
-                        type="file"
-                      />
-                      {draft.profilePhotoName ? (
-                        <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                          <CheckCircle2 className="h-4 w-4" />
-                          {draft.profilePhotoName}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-slate-400">
-                          A clear face photo is required for public vet profiles.
-                        </p>
-                      )}
-                    </div>
+                    <CloudinaryUpload
+                      accept="image/jpeg,image/png,image/webp"
+                      asset={
+                        draft.profilePhotoPublicId
+                          ? {
+                              bytes: 0,
+                              format: "image",
+                              originalFilename: draft.profilePhotoName,
+                              publicId: draft.profilePhotoPublicId,
+                              resourceType: "image",
+                              secureUrl: draft.profilePhotoUrl,
+                            }
+                          : null
+                      }
+                      kind="avatar"
+                      label="Upload a clear profile photo"
+                      onUploaded={(asset) =>
+                        setDraft((current) => ({
+                          ...current,
+                          profilePhotoName: asset.originalFilename,
+                          profilePhotoPublicId: asset.publicId,
+                          profilePhotoUrl: asset.secureUrl,
+                        }))
+                      }
+                    />
                   </FieldLabel>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FieldLabel label="License scan *">
-                      <div className="space-y-2">
-                        <Input
-                          accept=".jpg,.jpeg,.png,.pdf"
-                          onChange={(event) =>
-                            updateDraft(
-                              "licenseFileName",
-                              event.target.files?.[0]?.name ?? "",
-                            )
-                          }
-                          required
-                          type="file"
-                        />
-                        {draft.licenseFileName ? (
-                          <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                            <CheckCircle2 className="h-4 w-4" />
-                            {draft.licenseFileName}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-slate-400">No file selected</p>
-                        )}
-                      </div>
+                      <CloudinaryUpload
+                        accept="image/jpeg,image/png,application/pdf"
+                        asset={
+                          draft.licensePublicId && draft.licenseResourceType
+                            ? {
+                                bytes: 0,
+                                format: "document",
+                                originalFilename: draft.licenseFileName,
+                                publicId: draft.licensePublicId,
+                                resourceType: draft.licenseResourceType,
+                                secureUrl: "",
+                              }
+                            : null
+                        }
+                        kind="vet-document"
+                        label="Upload license document"
+                        onUploaded={(asset) =>
+                          setDraft((current) => ({
+                            ...current,
+                            licenseFileName: asset.originalFilename,
+                            licensePublicId: asset.publicId,
+                            licenseResourceType: asset.resourceType,
+                          }))
+                        }
+                      />
                     </FieldLabel>
 
                     <FieldLabel label="Degree certificate *">
-                      <div className="space-y-2">
-                        <Input
-                          accept=".jpg,.jpeg,.png,.pdf"
-                          onChange={(event) =>
-                            updateDraft(
-                              "degreeFileName",
-                              event.target.files?.[0]?.name ?? "",
-                            )
-                          }
-                          required
-                          type="file"
-                        />
-                        {draft.degreeFileName ? (
-                          <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                            <CheckCircle2 className="h-4 w-4" />
-                            {draft.degreeFileName}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-slate-400">No file selected</p>
-                        )}
-                      </div>
+                      <CloudinaryUpload
+                        accept="image/jpeg,image/png,application/pdf"
+                        asset={
+                          draft.degreePublicId && draft.degreeResourceType
+                            ? {
+                                bytes: 0,
+                                format: "document",
+                                originalFilename: draft.degreeFileName,
+                                publicId: draft.degreePublicId,
+                                resourceType: draft.degreeResourceType,
+                                secureUrl: "",
+                              }
+                            : null
+                        }
+                        kind="vet-document"
+                        label="Upload degree certificate"
+                        onUploaded={(asset) =>
+                          setDraft((current) => ({
+                            ...current,
+                            degreeFileName: asset.originalFilename,
+                            degreePublicId: asset.publicId,
+                            degreeResourceType: asset.resourceType,
+                          }))
+                        }
+                      />
                     </FieldLabel>
                   </div>
                 </div>
@@ -735,6 +761,7 @@ export function VetApplicationWizard() {
                       !draft.email ||
                       !draft.password ||
                       !draft.profilePhotoName ||
+                      !draft.profilePhotoPublicId ||
                       !draft.licenseNumber ||
                       !draft.clinicName ||
                       !draft.clinicCity ||
@@ -742,7 +769,9 @@ export function VetApplicationWizard() {
                       !draft.clinicAddress ||
                       !draft.clinicPostalCode ||
                       !draft.licenseFileName ||
+                      !draft.licensePublicId ||
                       !draft.degreeFileName
+                      || !draft.degreePublicId
                     }
                     onClick={submitApplication}
                   >

@@ -13,39 +13,19 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
+import { dbConnect } from "@/lib/db/connect";
+import { Review as ReviewModel } from "@/lib/db/models/Review";
+import "@/lib/db/models/User";
 
 type Review = {
   avatar: string;
   label: string;
   name: string;
   quote: string;
+  rating: number;
 };
 
 const avatarUsers = ["1", "2", "3"] as const;
-
-const reviews: Review[] = [
-  {
-    avatar: "https://i.pravatar.cc/100?u=9",
-    label: "Luna's family",
-    name: "Jessica Miller",
-    quote:
-      "The late-night video call saved my cat's life. The vet was calm, professional, and knew exactly what to do.",
-  },
-  {
-    avatar: "https://i.pravatar.cc/100?u=12",
-    label: "Buddy's family",
-    name: "Mark Thompson",
-    quote:
-      "Finally, a dashboard that makes sense. I can see all of Buddy's records in one place. Highly recommended.",
-  },
-  {
-    avatar: "https://i.pravatar.cc/100?u=15",
-    label: "Veterinary surgeon",
-    name: "Dr. Emily Chen",
-    quote:
-      "The onboarding for vets was so smooth. It is a great way for me to help more animals from my own clinic.",
-  },
-];
 
 function HealthVaultIcon() {
   return (
@@ -104,13 +84,15 @@ function NutritionIcon() {
   );
 }
 
-function StarRating() {
+function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="mb-4 flex gap-1 text-yellow-400">
+    <div className="mb-4 flex gap-1">
       {Array.from({ length: 5 }).map((_, index) => (
         <svg
           aria-hidden="true"
-          className="h-4 w-4 fill-current"
+          className={`h-4 w-4 fill-current ${
+            index < rating ? "text-yellow-400" : "text-slate-200"
+          }`}
           key={index}
           viewBox="0 0 20 20"
         >
@@ -288,7 +270,29 @@ function HeroExperiencePanel() {
     </div>
   );
 }
-export function LandingPage() {
+export async function LandingPage() {
+  await dbConnect();
+  const reviewRows = await ReviewModel.find({ isVisible: true })
+    .populate("userId", "name avatar")
+    .sort({ createdAt: -1 })
+    .limit(6)
+    .lean();
+  const reviews: Review[] = reviewRows.map((review) => {
+    const user = review.userId as unknown as {
+      avatar?: string;
+      name?: string;
+    };
+    return {
+      avatar:
+        user.avatar ??
+        `https://i.pravatar.cc/100?u=${review._id.toString()}`,
+      label: "Verified consultation",
+      name: user.name ?? "pawwcure user",
+      quote: review.comment,
+      rating: review.rating,
+    };
+  });
+
   return (
     <>
       <header className="relative overflow-hidden pb-20 pt-32">
@@ -433,39 +437,41 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 py-24" id="reviews">
-        <div className="mx-auto max-w-7xl px-6">
-          <h2 className="mb-12 text-center text-3xl font-bold">
-            What pet families say
-          </h2>
-          <div className="flex gap-6 overflow-x-auto px-2 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {reviews.map((review) => (
-              <article
-                className="min-w-[320px] rounded-4xl border border-slate-100 bg-white p-8 shadow-sm"
-                key={review.name}
-              >
-                <StarRating />
-                <p className="mb-8 text-slate-600 italic">
-                  &quot;{review.quote}&quot;
-                </p>
-                <div className="flex items-center gap-4">
-                  <Image
-                    alt={review.name}
-                    className="h-12 w-12 rounded-full object-cover"
-                    height={48}
-                    src={review.avatar}
-                    width={48}
-                  />
-                  <div>
-                    <p className="text-sm font-bold">{review.name}</p>
-                    <p className="text-xs text-slate-400">{review.label}</p>
+      {reviews.length > 0 ? (
+        <section className="bg-slate-50 py-24" id="reviews">
+          <div className="mx-auto max-w-7xl px-6">
+            <h2 className="mb-12 text-center text-3xl font-bold">
+              What pet families say
+            </h2>
+            <div className="flex gap-6 overflow-x-auto px-2 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {reviews.map((review) => (
+                <article
+                  className="min-w-[320px] rounded-4xl border border-slate-100 bg-white p-8 shadow-sm"
+                  key={review.name}
+                >
+                  <StarRating rating={review.rating} />
+                  <p className="mb-8 text-slate-600 italic">
+                    &quot;{review.quote}&quot;
+                  </p>
+                  <div className="flex items-center gap-4">
+                    <Image
+                      alt={review.name}
+                      className="h-12 w-12 rounded-full object-cover"
+                      height={48}
+                      src={review.avatar}
+                      width={48}
+                    />
+                    <div>
+                      <p className="text-sm font-bold">{review.name}</p>
+                      <p className="text-xs text-slate-400">{review.label}</p>
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="px-6 py-20" id="pricing">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[3rem] bg-emerald-950 p-12 text-center md:p-20">
@@ -500,4 +506,3 @@ export function LandingPage() {
     </>
   );
 }
-

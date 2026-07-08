@@ -5,8 +5,8 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { Notification } from "@/lib/db/models/Notification";
 import { Prescription } from "@/lib/db/models/Prescription";
+import { notifyUser } from "@/lib/services/notification.service";
 
 const recordSchema = z.object({
   diagnosis: z.string().min(2),
@@ -129,8 +129,9 @@ export async function POST(
 
     const writes: Promise<unknown>[] = [
       consultation.save() as Promise<unknown>,
-      Notification.create({
+      notifyUser({
         body: "Your vet has added diagnosis, treatment notes, and prescription details.",
+        email: true,
         link: `/consultation/${consultation._id.toString()}/summary`,
         title: "Consultation prescription ready",
         type: "consultation",

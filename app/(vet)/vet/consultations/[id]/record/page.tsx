@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import mongoose from "mongoose";
 
 import { ConsultationRecordForm } from "@/components/vet/ConsultationRecordForm";
+import { RecordAttachmentUploader } from "@/components/vet/RecordAttachmentUploader";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 type PopulatedPet = {
+  _id?: { toString(): string };
   breed?: string;
   name?: string;
   species?: string;
@@ -136,6 +138,12 @@ export default async function WriteRecordPage({
         scheduledAt={consultation.scheduledAt.toISOString()}
         user={user}
       />
+      {isPopulatedPet(consultation.petId) && consultation.petId._id ? (
+        <RecordAttachmentUploader
+          consultationId={consultation._id.toString()}
+          petId={consultation.petId._id.toString()}
+        />
+      ) : null}
     </section>
   );
 }

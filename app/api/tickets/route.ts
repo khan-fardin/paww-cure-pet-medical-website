@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Ticket } from "@/lib/db/models/Ticket";
+import { notifyRoles } from "@/lib/services/notification.service";
 
 const createTicketSchema = z.object({
   category: z.string().trim().min(2).max(80),
@@ -93,6 +94,23 @@ export async function POST(req: NextRequest) {
         },
       ],
     });
+
+    await Promise.all([
+      notifyRoles({
+        body: `${parsed.data.priority.toUpperCase()} priority: ${parsed.data.subject}`,
+        link: "/mod/tickets",
+        roles: ["mod"],
+        title: "New support ticket",
+        type: "support",
+      }),
+      notifyRoles({
+        body: `${parsed.data.priority.toUpperCase()} priority support ticket was opened.`,
+        link: "/admin/dashboard",
+        roles: ["admin"],
+        title: "Support activity",
+        type: "support",
+      }),
+    ]);
 
     return NextResponse.json(
       {

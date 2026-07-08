@@ -12,6 +12,9 @@ export interface IPayment extends Document {
   gatewayTranId?: string;
   amount: number;
   currency: "BDT";
+  platformFee: number;
+  vetPayout: number;
+  payoutStatus: "pending" | "paid";
   status: "pending" | "paid" | "failed" | "cancelled";
   rawPayload?: Record<string, unknown>;
   paidAt?: Date;
@@ -54,6 +57,14 @@ const PaymentSchema = new Schema<IPayment>(
     gatewayTranId: String,
     amount: { type: Number, required: true, min: 0 },
     currency: { type: String, enum: ["BDT"], default: "BDT" },
+    platformFee: { type: Number, default: 0, min: 0 },
+    vetPayout: { type: Number, default: 0, min: 0 },
+    payoutStatus: {
+      type: String,
+      enum: ["pending", "paid"],
+      default: "pending",
+      index: true,
+    },
     status: {
       type: String,
       enum: ["pending", "paid", "failed", "cancelled"],
@@ -65,6 +76,8 @@ const PaymentSchema = new Schema<IPayment>(
   },
   { timestamps: true }
 );
+
+PaymentSchema.index({ vetId: 1, payoutStatus: 1, status: 1 });
 
 export const Payment =
   mongoose.models.Payment ??

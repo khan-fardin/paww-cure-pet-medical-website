@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Loader } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
+import {
+  CloudinaryUpload,
+  type CloudinaryAsset,
+} from "@/components/ui/CloudinaryUpload";
 import { Input, Textarea } from "@/components/ui/Input";
 
 type PetSpecies = "bird" | "cat" | "dog" | "other" | "rabbit";
@@ -44,6 +48,7 @@ export function NewPetForm() {
   const router = useRouter();
   const [form, setForm] = useState<PetFormState>(initialState);
   const [error, setError] = useState<string | null>(null);
+  const [avatar, setAvatar] = useState<CloudinaryAsset | null>(null);
   const [saving, setSaving] = useState(false);
 
   function update<K extends keyof PetFormState>(
@@ -62,6 +67,7 @@ export function NewPetForm() {
     const response = await fetch("/api/pets", {
       body: JSON.stringify({
         allergies: splitList(form.allergies),
+        avatar: avatar?.secureUrl,
         breed: form.breed,
         dateOfBirth: form.dateOfBirth,
         medicalConditions: splitList(form.medicalConditions),
@@ -106,6 +112,16 @@ export function NewPetForm() {
           <p className="text-sm font-bold text-red-700">{error}</p>
         </div>
       ) : null}
+
+      <div className="md:col-span-2">
+        <CloudinaryUpload
+          accept="image/jpeg,image/png,image/webp"
+          asset={avatar}
+          kind="pet"
+          label="Add a pet photo"
+          onUploaded={setAvatar}
+        />
+      </div>
 
       <label className="block">
         <span className="mb-2 block text-sm font-bold text-slate-700">

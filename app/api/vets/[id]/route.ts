@@ -5,6 +5,7 @@ import { dbConnect } from "@/lib/db/connect";
 import { User } from "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
 import mongoose from "mongoose";
+import { notifyUser } from "@/lib/services/notification.service";
 
 const updateVetSchema = z.object({
   specializations: z.array(z.string()).optional(),
@@ -268,6 +269,24 @@ export async function PATCH(
     }
 
     await vetProfile.save();
+
+    await notifyUser({
+      body:
+        parsed.data.action === "approve"
+          ? "Your vet application was approved. Your vet portal is now available."
+          : `Your vet application was rejected: ${vetProfile.rejectionReason}`,
+      email: true,
+      link:
+        parsed.data.action === "approve"
+          ? "/vet/dashboard"
+          : "/apply-as-vet",
+      title:
+        parsed.data.action === "approve"
+          ? "Vet application approved"
+          : "Vet application update",
+      type: "system",
+      userId: vetProfile.userId,
+    });
 
     return NextResponse.json({
       success: true,

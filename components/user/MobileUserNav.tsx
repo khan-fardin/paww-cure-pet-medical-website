@@ -7,9 +7,11 @@ import {
   FileText,
   Home,
   LifeBuoy,
+  MessageSquareText,
   Menu,
   Search,
   Stethoscope,
+  UserRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +32,8 @@ const menuItems = [
   { href: "/reminders", icon: CalendarDays, label: "Reminders" },
   { href: "/payments", icon: CreditCard, label: "Payments" },
   { href: "/support", icon: LifeBuoy, label: "Support" },
+  { href: "/my-reviews", icon: MessageSquareText, label: "My Reviews" },
+  { href: "/profile", icon: UserRound, label: "My Profile" },
 ] as const;
 
 function isActivePath(pathname: string, href: string) {

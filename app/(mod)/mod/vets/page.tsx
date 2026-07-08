@@ -21,9 +21,13 @@ type PopulatedVetProfile = {
   consultationFee: number;
   createdAt: Date;
   degreeDocumentName?: string;
+  degreeDocumentPublicId?: string;
+  degreeDocumentResourceType?: "image" | "raw" | "video";
   experience: number;
   isVerified: boolean;
   licenseDocumentName?: string;
+  licenseDocumentPublicId?: string;
+  licenseDocumentResourceType?: "image" | "raw" | "video";
   licenseNumber: string;
   phoneNumber?: string;
   rejectionReason?: string;
@@ -47,10 +51,14 @@ function toVetApplication(vet: PopulatedVetProfile): VetApplicationItem {
     consultationFee: vet.consultationFee,
     createdAt: vet.createdAt.toISOString(),
     degreeDocumentName: vet.degreeDocumentName,
+    degreeDocumentPublicId: vet.degreeDocumentPublicId,
+    degreeDocumentResourceType: vet.degreeDocumentResourceType,
     email: vet.userId?.email ?? "No email",
     experience: vet.experience,
     isVerified: vet.isVerified,
     licenseDocumentName: vet.licenseDocumentName,
+    licenseDocumentPublicId: vet.licenseDocumentPublicId,
+    licenseDocumentResourceType: vet.licenseDocumentResourceType,
     licenseNumber: vet.licenseNumber,
     name: vet.userId?.name ?? "Unnamed vet",
     phone: vet.userId?.phone ?? vet.phoneNumber,

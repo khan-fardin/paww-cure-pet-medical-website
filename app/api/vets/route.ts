@@ -5,6 +5,7 @@ import { getSession } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/hash";
 import { User } from "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
+import { notifyRoles } from "@/lib/services/notification.service";
 
 const querySchema = z.object({
   city: z.string().optional(),
@@ -23,17 +24,23 @@ const vetApplicationSchema = z.object({
   clinicProvince: z.string().min(2),
   consultFee: z.coerce.number().min(0).default(0),
   degreeFileName: z.string().optional(),
+  degreePublicId: z.string().min(1),
+  degreeResourceType: z.enum(["image", "raw", "video"]),
   email: z.string().email(),
   experience: z.coerce.number().min(0).default(0),
   expiryDate: z.string().optional(),
   issuingAuthority: z.string().optional(),
   languages: z.string().optional(),
   licenseFileName: z.string().optional(),
+  licensePublicId: z.string().min(1),
+  licenseResourceType: z.enum(["image", "raw", "video"]),
   licenseNumber: z.string().min(2),
   name: z.string().min(2),
   password: z.string().min(8).optional(),
   phone: z.string().optional(),
   profilePhotoName: z.string().min(1),
+  profilePhotoPublicId: z.string().min(1),
+  profilePhotoUrl: z.string().url(),
   specialties: z.array(z.string()).default([]),
 });
 
@@ -168,6 +175,7 @@ export async function POST(req: NextRequest) {
           passwordHash,
           phone: parsed.data.phone,
           role: "user", // New users default to "user"
+          avatar: parsed.data.profilePhotoUrl,
         });
       } catch (err: unknown) {
         // Handle MongoDB duplicate key error
@@ -210,6 +218,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const avatarPrefix = `pawwcure/avatars/${user._id.toString()}-`;
+    const documentPrefix = `pawwcure/vet-documents/${user._id.toString()}-`;
+    if (
+      !parsed.data.profilePhotoPublicId.startsWith(avatarPrefix) ||
+      !parsed.data.licensePublicId.startsWith(documentPrefix) ||
+      !parsed.data.degreePublicId.startsWith(documentPrefix) ||
+      new URL(parsed.data.profilePhotoUrl).hostname !== "res.cloudinary.com"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "One or more uploaded files do not belong to this account.",
+        },
+        { status: 403 },
+      );
+    }
+
+    user.avatar = parsed.data.profilePhotoUrl;
+    user.avatarPublicId = parsed.data.profilePhotoPublicId;
+    await user.save();
+
     let profile;
     try {
       profile = await VetProfile.create({
@@ -240,8 +269,13 @@ export async function POST(req: NextRequest) {
         isVerified: false,
         applicationStatus: "submitted",
         profilePhotoName: parsed.data.profilePhotoName,
+        profilePhotoPublicId: parsed.data.profilePhotoPublicId,
         licenseDocumentName: parsed.data.licenseFileName,
+        licenseDocumentPublicId: parsed.data.licensePublicId,
+        licenseDocumentResourceType: parsed.data.licenseResourceType,
         degreeDocumentName: parsed.data.degreeFileName,
+        degreeDocumentPublicId: parsed.data.degreePublicId,
+        degreeDocumentResourceType: parsed.data.degreeResourceType,
         isActive: true,
         acceptingNewPatients: false,
         availability: [],
@@ -260,6 +294,23 @@ export async function POST(req: NextRequest) {
       }
       throw err;
     }
+
+    await Promise.all([
+      notifyRoles({
+        body: `${user.name} submitted a vet application for verification.`,
+        link: "/mod/vets",
+        roles: ["mod"],
+        title: "New vet application",
+        type: "system",
+      }),
+      notifyRoles({
+        body: `${user.name} submitted a vet application.`,
+        link: "/admin/vets",
+        roles: ["admin"],
+        title: "Vet application submitted",
+        type: "system",
+      }),
+    ]);
 
     return NextResponse.json(
       {

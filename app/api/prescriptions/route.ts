@@ -5,10 +5,6 @@ import { dbConnect } from "@/lib/db/connect";
 import { Prescription } from "@/lib/db/models/Prescription";
 import { Consultation } from "@/lib/db/models/Consultation";
 
-// TODO: Implement prescription printing/PDF generation
-// TODO: Add pharmacy integration for refill requests
-// TODO: Track prescription usage history
-
 const createPrescriptionSchema = z.object({
   consultationId: z.string().min(1),
   medications: z.array(

@@ -1,19 +1,21 @@
 import {
-  Bell,
   CalendarDays,
   Cat,
   CreditCard,
   FileText,
   Home,
   LifeBuoy,
+  MessageSquareText,
   Search,
   Stethoscope,
+  UserRound,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileUserNav } from "@/components/user/MobileUserNav";
 
 const navItems = [
@@ -25,6 +27,8 @@ const navItems = [
   { href: "/reminders", icon: CalendarDays, label: "Reminders" },
   { href: "/payments", icon: CreditCard, label: "Payments" },
   { href: "/support", icon: LifeBuoy, label: "Support" },
+  { href: "/my-reviews", icon: MessageSquareText, label: "My Reviews" },
+  { href: "/profile", icon: UserRound, label: "My Profile" },
 ] as const;
 
 type ShellPet = {
@@ -107,13 +111,7 @@ export function UserShell({
             >
               {activePet?.name ?? "Pets"}
             </Link>
-            <button
-              className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-3 py-2 text-sm font-bold text-slate-600 shadow-sm sm:px-4"
-              type="button"
-            >
-              <Bell aria-hidden="true" className="h-4 w-4" />
-              <span className="hidden sm:inline">Alerts</span>
-            </button>
+            <NotificationBar />
             <Image
               alt={currentUser.name}
               className="h-10 w-10 rounded-full object-cover"

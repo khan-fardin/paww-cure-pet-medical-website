@@ -58,11 +58,13 @@ export default function AdminSettingsPage() {
                 </label>
                 <input
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold placeholder-slate-400 outline-none focus:border-rose-300 focus:bg-white transition"
-                  defaultValue="12"
+                  defaultValue="20"
+                  readOnly
                   type="number"
                 />
                 <p className="mt-2 text-xs text-slate-500">
-                  Applied to all vet consultations • Currently: 12%
+                  Retained from the displayed consultation price. Users are not
+                  charged an additional fee.
                 </p>
               </div>
 

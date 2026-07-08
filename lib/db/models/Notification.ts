@@ -4,7 +4,14 @@ export interface INotification extends Document {
   userId: mongoose.Types.ObjectId;
   title: string;
   body: string;
-  type: "booking" | "consultation" | "payment" | "system";
+  type:
+    | "booking"
+    | "consultation"
+    | "payment"
+    | "payout"
+    | "review"
+    | "support"
+    | "system";
   link?: string;
   isRead: boolean;
   createdAt: Date;
@@ -23,7 +30,15 @@ const NotificationSchema = new Schema<INotification>(
     body: { type: String, required: true, trim: true },
     type: {
       type: String,
-      enum: ["booking", "consultation", "payment", "system"],
+      enum: [
+        "booking",
+        "consultation",
+        "payment",
+        "payout",
+        "review",
+        "support",
+        "system",
+      ],
       required: true,
     },
     link: String,
@@ -33,6 +48,21 @@ const NotificationSchema = new Schema<INotification>(
 );
 
 NotificationSchema.index({ userId: 1, isRead: 1 });
+
+const existingNotificationModel = mongoose.models.Notification as
+  | mongoose.Model<INotification>
+  | undefined;
+const existingTypes = existingNotificationModel?.schema.path("type");
+const hasCurrentTypes =
+  existingTypes &&
+  "enumValues" in existingTypes &&
+  Array.isArray(existingTypes.enumValues) &&
+  existingTypes.enumValues.includes("support") &&
+  existingTypes.enumValues.includes("payout");
+
+if (existingNotificationModel && !hasCurrentTypes) {
+  delete mongoose.models.Notification;
+}
 
 export const Notification =
   mongoose.models.Notification ??

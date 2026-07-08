@@ -9,6 +9,7 @@ import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
 import "@/lib/db/models/Pet";
 import { Prescription } from "@/lib/db/models/Prescription";
+import { Review } from "@/lib/db/models/Review";
 import "@/lib/db/models/User";
 
 type ConsultationSummaryPageProps = {
@@ -29,6 +30,7 @@ type PopulatedPet = {
 };
 
 type PrescriptionSummary = {
+  _id: { toString(): string };
   medications?: {
     dosage: string;
     duration: string;
@@ -96,9 +98,12 @@ export default async function ConsultationSummaryPage({
     notFound();
   }
 
-  const prescription = await Prescription.findOne({
-    consultationId: id,
-  }).lean<PrescriptionSummary>();
+  const [prescription, existingReview] = await Promise.all([
+    Prescription.findOne({
+      consultationId: id,
+    }).lean<PrescriptionSummary>(),
+    Review.exists({ consultationId: id }),
+  ]);
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-6 py-16">
@@ -161,8 +166,9 @@ export default async function ConsultationSummaryPage({
             Prescription
           </p>
           {prescription?.medications?.length ? (
-            <div className="mt-4 grid gap-3">
-              {prescription.medications.map((medication) => (
+            <>
+              <div className="mt-4 grid gap-3">
+                {prescription.medications.map((medication) => (
                 <div
                   className="rounded-2xl bg-white p-4 text-sm shadow-sm"
                   key={`${medication.name}-${medication.dosage}`}
@@ -178,8 +184,15 @@ export default async function ConsultationSummaryPage({
                     </p>
                   ) : null}
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <Link
+                className="mt-4 inline-flex rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white"
+                href={`/api/prescriptions/${prescription._id.toString()}/pdf`}
+              >
+                Download Prescription PDF
+              </Link>
+            </>
           ) : (
             <p className="mt-3 text-sm text-slate-400">
               No prescription has been added yet.
@@ -192,6 +205,7 @@ export default async function ConsultationSummaryPage({
             <ReviewForm
               consultationId={id}
               disabled={consultation.status !== "completed"}
+              reviewed={Boolean(existingReview)}
             />
           </div>
         ) : null}

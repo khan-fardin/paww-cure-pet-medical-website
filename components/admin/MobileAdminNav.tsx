@@ -5,6 +5,7 @@ import {
   // Bell,
   CreditCard,
   FileText,
+  History,
   Home,
   Menu,
   Settings,
@@ -29,6 +30,7 @@ const dockItems = [
 const menuItems = [
   ...dockItems,
   { href: "/admin/content", icon: FileText, label: "Content" },
+  { href: "/admin/review-audit", icon: History, label: "Review Audit" },
   { href: "/admin/roles", icon: BarChart3, label: "Roles" },
   { href: "/admin/analytics", icon: TrendingUp, label: "Analytics" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },

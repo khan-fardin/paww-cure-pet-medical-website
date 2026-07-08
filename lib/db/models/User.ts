@@ -9,6 +9,7 @@ export interface IUser extends Document {
   isActive: boolean;
   refreshToken?: string;
   avatar?: string;
+  avatarPublicId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +28,7 @@ const UserSchema = new Schema<IUser>(
     isActive: { type: Boolean, default: true },
     refreshToken: String,
     avatar: String,
+    avatarPublicId: String,
   },
   { timestamps: true }
 );

@@ -15,10 +15,6 @@ const updateConsultationSchema = z.object({
   notes: z.string().optional(),
 });
 
-// TODO: Generate video/audio conference links when status = "ongoing"
-// TODO: Auto-send follow-up notifications after completion
-// TODO: Implement consultation recording and transcription
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -241,7 +237,6 @@ export async function DELETE(
       );
     }
 
-    // TODO: Process refund if applicable
     consultation.status = "cancelled";
     await consultation.save();
 

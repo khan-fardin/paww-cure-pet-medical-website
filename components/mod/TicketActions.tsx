@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Headphones, MessageSquareReply } from "lucide-react";
+import {
+  CheckCircle2,
+  Headphones,
+  MessageSquareReply,
+  Phone,
+  Video,
+} from "lucide-react";
 
 type TicketActionsProps = {
   phone?: string;
@@ -44,6 +50,10 @@ export function TicketActions({ phone, status, ticketId }: TicketActionsProps) {
       await updateTicket(ticketId, body);
       if (actionName === "reply") setReply("");
       if (actionName === "resolve") setResolveNote("");
+      if (actionName === "start-call") {
+        router.push(`/support-call/${ticketId}`);
+        return;
+      }
       router.refresh();
     } catch (actionError) {
       setError(
@@ -58,7 +68,7 @@ export function TicketActions({ phone, status, ticketId }: TicketActionsProps) {
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         <button
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           disabled={isClosed || isSaving !== null}
@@ -68,24 +78,35 @@ export function TicketActions({ phone, status, ticketId }: TicketActionsProps) {
           <Headphones className="h-4 w-4" />
           Take Ticket
         </button>
+        <button
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700 disabled:bg-slate-300"
+          disabled={isClosed || isSaving !== null}
+          onClick={() => {
+            if (status === "in-call") {
+              router.push(`/support-call/${ticketId}`);
+              return;
+            }
+            void run("start-call", {
+              action: "start-call",
+              message:
+                "A moderator started a secure video support call. Join from this ticket now.",
+            });
+          }}
+          type="button"
+        >
+          <Video className="h-4 w-4" />
+          {status === "in-call" ? "Join Active Call" : "Video Support"}
+        </button>
         <a
           className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition ${
             phone && !isClosed
-              ? "bg-blue-600 text-white hover:bg-blue-700"
+              ? "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               : "pointer-events-none bg-slate-200 text-slate-400"
           }`}
           href={phone && !isClosed ? `tel:${phone}` : undefined}
-          onClick={() => {
-            if (phone && !isClosed) {
-              void run("start-call", {
-                action: "start-call",
-                message:
-                  "I am calling the user directly now. Please keep this ticket open until we solve it.",
-              });
-            }
-          }}
         >
-          Call User
+          <Phone className="h-4 w-4" />
+          Phone Fallback
         </a>
         <button
           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
@@ -94,6 +115,7 @@ export function TicketActions({ phone, status, ticketId }: TicketActionsProps) {
             run("resolve", {
               action: "resolve",
               message: resolveNote || "Problem solved. Closing ticket.",
+              moderatorNotes: resolveNote,
             })
           }
           type="button"

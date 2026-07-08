@@ -25,8 +25,8 @@ export default function PricingPage() {
             Simple consultation pricing.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-slate-500">
-            Each vet sets their own consultation fee. pawwcure shows the full
-            cost before payment, including the platform service fee.
+            Each vet sets their own consultation price. The displayed price is
+            the final amount users pay, with no extra platform surcharge.
           </p>
         </div>
 
@@ -35,10 +35,10 @@ export default function PricingPage() {
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Typical checkout
             </p>
-            <h2 className="mt-3 text-4xl font-bold">Vet fee + 12%</h2>
+            <h2 className="mt-3 text-4xl font-bold">One final price</h2>
             <p className="mt-4 leading-relaxed text-slate-500">
-              The final amount depends on the selected vet, consultation type,
-              and duration.
+              pawwcure retains 20% from the completed payment and records 80%
+              as the vet payout.
             </p>
             <Link
               className="mt-8 inline-flex w-full justify-center rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-bold text-white"

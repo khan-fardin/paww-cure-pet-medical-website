@@ -23,8 +23,13 @@ export interface IVetProfile extends Document {
   applicationStatus: "draft" | "submitted" | "approved" | "rejected";
   rejectionReason?: string;
   profilePhotoName?: string;
+  profilePhotoPublicId?: string;
   licenseDocumentName?: string;
+  licenseDocumentPublicId?: string;
+  licenseDocumentResourceType?: "image" | "raw" | "video";
   degreeDocumentName?: string;
+  degreeDocumentPublicId?: string;
+  degreeDocumentResourceType?: "image" | "raw" | "video";
   isActive: boolean;
   averageRating: number; // 0-5
   totalReviews: number;
@@ -72,8 +77,19 @@ const VetProfileSchema = new Schema<IVetProfile>(
     },
     rejectionReason: String,
     profilePhotoName: String,
+    profilePhotoPublicId: String,
     licenseDocumentName: String,
+    licenseDocumentPublicId: String,
+    licenseDocumentResourceType: {
+      type: String,
+      enum: ["image", "raw", "video"],
+    },
     degreeDocumentName: String,
+    degreeDocumentPublicId: String,
+    degreeDocumentResourceType: {
+      type: String,
+      enum: ["image", "raw", "video"],
+    },
     isActive: { type: Boolean, default: true },
     averageRating: { type: Number, default: 0, min: 0, max: 5 },
     totalReviews: { type: Number, default: 0, min: 0 },

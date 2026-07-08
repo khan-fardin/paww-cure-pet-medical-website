@@ -83,8 +83,7 @@ export default async function BookingPage({ params }: BookingPageProps) {
   const vetAvatar =
     bookableVet.userId?.avatar ??
     `https://i.pravatar.cc/420?u=${bookableVet._id.toString()}`;
-  const platformFee = Math.round(bookableVet.consultationFee * 0.12);
-  const total = bookableVet.consultationFee + platformFee;
+  const total = bookableVet.consultationFee;
 
   return (
     <section>
@@ -97,7 +96,7 @@ export default async function BookingPage({ params }: BookingPageProps) {
         </h1>
         <p className="mt-4 max-w-2xl leading-relaxed text-slate-500">
           Review the vet, choose one of your pets, and confirm the consultation
-          details. Payment gateway wiring can be added later.
+          details. The displayed consultation fee is the final amount charged.
         </p>
       </div>
 

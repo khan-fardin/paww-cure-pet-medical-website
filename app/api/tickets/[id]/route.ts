@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
-import crypto from "crypto";
 import mongoose from "mongoose";
 import { z } from "zod";
 
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Ticket } from "@/lib/db/models/Ticket";
+import { createAgoraSupportChannelName } from "@/lib/services/agora.service";
+import { notifyUser } from "@/lib/services/notification.service";
 
 const updateTicketSchema = z.discriminatedUnion("action", [
   z.object({
@@ -20,6 +21,11 @@ const updateTicketSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("resolve"),
     message: z.string().trim().max(1200).optional(),
+    moderatorNotes: z.string().trim().max(2000).optional(),
+  }),
+  z.object({
+    action: z.literal("end-call"),
+    moderatorNotes: z.string().trim().max(2000).optional(),
   }),
 ]);
 
@@ -143,9 +149,14 @@ export async function PATCH(
     }
 
     const isStaff = session.role === "mod" || session.role === "admin";
+    let notifyCallStarted = false;
+    let notifyReplyRecipient = false;
+    let notifyResolved = false;
 
     if (
-      ["assign", "start-call", "resolve"].includes(parsed.data.action) &&
+      ["assign", "start-call", "end-call", "resolve"].includes(
+        parsed.data.action
+      ) &&
       !isStaff
     ) {
       return NextResponse.json(
@@ -173,6 +184,7 @@ export async function PATCH(
         ticket.status = "in-progress";
         ticket.assignedModId ??= new mongoose.Types.ObjectId(session.userId);
       }
+      notifyReplyRecipient = true;
     }
 
     if (parsed.data.action === "assign") {
@@ -189,7 +201,9 @@ export async function PATCH(
     if (parsed.data.action === "start-call") {
       ticket.assignedModId = new mongoose.Types.ObjectId(session.userId);
       ticket.status = "in-call";
-      ticket.callToken = crypto.randomBytes(18).toString("hex");
+      ticket.agoraChannelName ??= createAgoraSupportChannelName(
+        ticket._id.toString()
+      );
       ticket.callStartedAt = new Date();
       ticket.callEndedAt = undefined;
       ticket.messages.push({
@@ -200,12 +214,30 @@ export async function PATCH(
           "Moderator started a personal support call. Keep this ticket open until the issue is solved.",
         timestamp: new Date(),
       });
+      notifyCallStarted = true;
+    }
+
+    if (parsed.data.action === "end-call") {
+      ticket.status = "in-progress";
+      ticket.callEndedAt = new Date();
+      if (parsed.data.moderatorNotes) {
+        ticket.moderatorNotes = parsed.data.moderatorNotes;
+      }
+      ticket.messages.push({
+        senderId: new mongoose.Types.ObjectId(session.userId),
+        senderType: "system",
+        message: "The support call ended. The ticket remains open for follow-up.",
+        timestamp: new Date(),
+      });
     }
 
     if (parsed.data.action === "resolve") {
       ticket.status = "closed";
       ticket.callToken = undefined;
-      ticket.callEndedAt = new Date();
+      ticket.callEndedAt ??= new Date();
+      if (parsed.data.moderatorNotes) {
+        ticket.moderatorNotes = parsed.data.moderatorNotes;
+      }
       ticket.resolvedAt = new Date();
       ticket.messages.push({
         senderId: new mongoose.Types.ObjectId(session.userId),
@@ -213,9 +245,43 @@ export async function PATCH(
         message: parsed.data.message || "Issue solved. Ticket closed.",
         timestamp: new Date(),
       });
+      notifyResolved = true;
     }
 
     await ticket.save();
+
+    if (notifyResolved) {
+      await notifyUser({
+        body: "Your support issue was marked resolved. The ticket is now closed.",
+        email: true,
+        link: "/support",
+        title: "Support ticket resolved",
+        type: "support",
+        userId: ticket.userId,
+      });
+    } else if (notifyCallStarted) {
+      await notifyUser({
+        body: "A moderator started your secure support call. Join from your support ticket.",
+        email: true,
+        link: `/support-call/${ticket._id.toString()}`,
+        title: "Support call ready",
+        type: "support",
+        userId: ticket.userId,
+      });
+    } else if (notifyReplyRecipient) {
+      const recipientId = isStaff ? ticket.userId : ticket.assignedModId;
+      if (recipientId) {
+        await notifyUser({
+          body: isStaff
+            ? "A moderator replied to your support ticket."
+            : "The user replied to an assigned support ticket.",
+          link: isStaff ? "/support" : "/mod/tickets",
+          title: "Support ticket updated",
+          type: "support",
+          userId: recipientId,
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

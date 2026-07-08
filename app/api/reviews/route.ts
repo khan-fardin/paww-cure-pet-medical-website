@@ -1,52 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { z } from "zod";
-import { verifyToken } from "@/lib/auth/jwt";
-import { dbConnect } from "@/lib/db/connect";
-import { Review } from "@/lib/db/models/Review";
-import { Consultation } from "@/lib/db/models/Consultation";
 
-// TODO: Implement review moderation and flagging system
-// TODO: Add review verification (only after consultation completed)
-// TODO: Send vet notification when new review received
-// TODO: Auto-update vet average rating when review posted
+import { getSession } from "@/lib/auth/session";
+import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Review } from "@/lib/db/models/Review";
+import { notifyUser } from "@/lib/services/notification.service";
+import { syncVetReviewStats } from "@/lib/services/review.service";
 
 const createReviewSchema = z.object({
-  consultationId: z.string().min(1),
-  rating: z.number().min(1).max(5),
-  title: z.string().min(3).max(100),
-  comment: z.string().min(10).max(1000),
-  professionalism: z.number().min(1).max(5).optional(),
-  communication: z.number().min(1).max(5).optional(),
-  punctuality: z.number().min(1).max(5).optional(),
-  cleanliness: z.number().min(1).max(5).optional(),
+  comment: z.string().trim().min(10).max(1000),
+  communication: z.number().int().min(1).max(5),
+  consultationId: z.string().refine((value) => mongoose.Types.ObjectId.isValid(value)),
+  professionalism: z.number().int().min(1).max(5),
+  punctuality: z.number().int().min(1).max(5),
+  rating: z.number().int().min(1).max(5),
+  title: z.string().trim().min(3).max(100),
 });
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const vetId = searchParams.get("vetId");
-    const consultationId = searchParams.get("consultationId");
-
     await dbConnect();
 
+    const vetId = req.nextUrl.searchParams.get("vetId");
+    const consultationId = req.nextUrl.searchParams.get("consultationId");
     const query: Record<string, unknown> = { isVisible: true };
 
-    if (vetId) {
-      query.vetId = vetId;
-    }
-    if (consultationId) {
-      query.consultationId = consultationId;
-    }
+    if (vetId) query.vetId = vetId;
+    if (consultationId) query.consultationId = consultationId;
 
     const reviews = await Review.find(query)
-      .select("-__v")
       .populate("userId", "name avatar")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    return NextResponse.json({
-      success: true,
-      data: reviews,
-    });
+    return NextResponse.json({ success: true, data: reviews });
   } catch (error) {
     console.error("[reviews] GET error:", error);
     return NextResponse.json(
@@ -58,97 +47,98 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get("access_token")?.value;
+    const session = await getSession();
 
-    if (!token) {
+    if (!session) {
       return NextResponse.json(
         { success: false, message: "Not authenticated" },
         { status: 401 }
       );
     }
 
-    const payload = await verifyToken(token);
-
-    if (payload.role !== "user") {
+    if (session.role !== "user") {
       return NextResponse.json(
         { success: false, message: "Only users can submit reviews" },
         { status: 403 }
       );
     }
 
-    const body = await req.json();
-    const parsed = createReviewSchema.safeParse(body);
+    const parsed = createReviewSchema.safeParse(await req.json());
 
     if (!parsed.success) {
       return NextResponse.json(
-        {
-          success: false,
-          errors: parsed.error.flatten(),
-        },
+        { success: false, message: "Please complete every review field" },
         { status: 400 }
       );
     }
 
     await dbConnect();
 
-    const consultation = await Consultation.findById(
-      parsed.data.consultationId
-    );
+    const consultation = await Consultation.findOne({
+      _id: parsed.data.consultationId,
+      status: "completed",
+      userId: session.userId,
+    }).select("vetId");
 
-    if (!consultation || consultation.userId.toString() !== payload.userId) {
+    if (!consultation) {
       return NextResponse.json(
-        { success: false, message: "Consultation not found or unauthorized" },
-        { status: 404 }
+        {
+          success: false,
+          message: "Reviews are available only after your consultation is completed",
+        },
+        { status: 403 }
       );
     }
 
-    // Check if review already exists
-    const existingReview = await Review.findOne({
-      consultationId: parsed.data.consultationId,
+    const existingReview = await Review.exists({
+      consultationId: consultation._id,
     });
 
     if (existingReview) {
       return NextResponse.json(
-        { success: false, message: "Review already exists for this consultation" },
+        { success: false, message: "You already reviewed this consultation" },
         { status: 409 }
       );
     }
 
     const review = await Review.create({
-      consultationId: parsed.data.consultationId,
+      ...parsed.data,
+      consultationId: consultation._id,
+      isVerifiedPurchase: true,
+      userId: session.userId,
       vetId: consultation.vetId,
-      userId: payload.userId,
-      rating: parsed.data.rating,
-      title: parsed.data.title,
-      comment: parsed.data.comment,
-      professionalism: parsed.data.professionalism,
-      communication: parsed.data.communication,
-      punctuality: parsed.data.punctuality,
-      cleanliness: parsed.data.cleanliness,
     });
 
-    // TODO: Update vet profile average rating
-    // TODO: Send notification to vet
+    await Promise.all([
+      syncVetReviewStats(consultation.vetId),
+      notifyUser({
+        body: `You received a ${review.rating}-star review: ${review.title}`,
+        email: true,
+        link: "/vet/reviews",
+        title: "New consultation review",
+        type: "review",
+        userId: consultation.vetId,
+      }),
+    ]);
 
     return NextResponse.json(
       {
         success: true,
         message: "Review submitted successfully",
-        data: review,
+        data: { id: review._id.toString() },
       },
       { status: 201 }
     );
   } catch (error) {
     console.error("[reviews] POST error:", error);
 
-    // Check if it's a MongoDB duplicate key error
     if (
       error instanceof Error &&
       "code" in error &&
       error.code === 11000
     ) {
       return NextResponse.json(
-        { success: false, message: "You have already reviewed this consultation" },
+        { success: false, message: "You already reviewed this consultation" },
         { status: 409 }
       );
     }

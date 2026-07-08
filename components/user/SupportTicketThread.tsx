@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MessageSquareReply, PhoneCall } from "lucide-react";
 
 type SupportTicketThreadProps = {
@@ -75,6 +76,13 @@ export function SupportTicketThread({
                 ? new Date(callStartedAt).toLocaleString()
                 : "recently"}
             </p>
+            <Link
+              className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white"
+              href={`/support-call/${ticketId}`}
+            >
+              <PhoneCall className="h-4 w-4" />
+              Join Support Call
+            </Link>
           </div>
         </div>
       ) : null}

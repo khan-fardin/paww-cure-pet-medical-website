@@ -10,8 +10,10 @@ export interface ITicket extends Document {
   category: string;
   description: string;
   callToken?: string;
+  agoraChannelName?: string;
   callStartedAt?: Date;
   callEndedAt?: Date;
+  moderatorNotes?: string;
   resolvedAt?: Date;
   messages: Array<{
     senderType: "user" | "support" | "system";
@@ -55,8 +57,10 @@ const TicketSchema = new Schema<ITicket>(
     category: { type: String, required: true, trim: true },
     description: { type: String, required: true },
     callToken: String,
+    agoraChannelName: String,
     callStartedAt: Date,
     callEndedAt: Date,
+    moderatorNotes: String,
     resolvedAt: Date,
     messages: [
       {
@@ -85,7 +89,11 @@ const existingTicketModel = mongoose.models.Ticket as
   | mongoose.Model<ITicket>
   | undefined;
 
-if (existingTicketModel && !existingTicketModel.schema.path("assignedModId")) {
+if (
+  existingTicketModel &&
+  (!existingTicketModel.schema.path("assignedModId") ||
+    !existingTicketModel.schema.path("agoraChannelName"))
+) {
   delete mongoose.models.Ticket;
 }
 

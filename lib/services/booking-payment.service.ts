@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 
 import { Booking } from "@/lib/db/models/Booking";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { Notification } from "@/lib/db/models/Notification";
 import { Payment } from "@/lib/db/models/Payment";
+import { calculatePaymentSplit } from "@/lib/config/fees";
+import {
+  notifyRoles,
+  notifyUser,
+} from "@/lib/services/notification.service";
 import { getAppUrl, validateSslCommerzTransaction } from "./sslcommerz.service";
 
 type SslCallbackPayload = Record<string, string>;
@@ -80,9 +84,14 @@ export async function completeSslPayment(payload: SslCallbackPayload) {
     vetId: booking.vetId,
   });
 
+  const { platformFee, vetPayout } = calculatePaymentSplit(payment.amount);
+
   payment.status = "paid";
   payment.consultationId = consultation._id;
   payment.gatewayTranId = payload.bank_tran_id;
+  payment.platformFee = platformFee;
+  payment.vetPayout = vetPayout;
+  payment.payoutStatus = "pending";
   payment.rawPayload = { ...payload, validation: validation.raw };
   payment.paidAt = new Date();
 
@@ -92,12 +101,28 @@ export async function completeSslPayment(payload: SslCallbackPayload) {
   await Promise.all([
     payment.save(),
     booking.save(),
-    Notification.create({
+    notifyUser({
       body: "A paid consultation has been confirmed and added to your schedule.",
+      email: true,
       link: `/vet/consultations/${consultation._id.toString()}`,
       title: "New confirmed booking",
       type: "booking",
       userId: booking.vetId,
+    }),
+    notifyUser({
+      body: `Your BDT ${payment.amount} payment was confirmed. The consultation is ready.`,
+      email: true,
+      link: `/consultation/${consultation._id.toString()}/waiting`,
+      title: "Payment confirmed",
+      type: "payment",
+      userId: booking.userId,
+    }),
+    notifyRoles({
+      body: `A BDT ${payment.amount} consultation payment was confirmed.`,
+      link: "/admin/payments",
+      roles: ["admin"],
+      title: "Payment received",
+      type: "payment",
     }),
   ]);
 
@@ -127,6 +152,17 @@ export async function markSslPaymentFailed(
   payment.status = status;
   payment.rawPayload = payload;
   await payment.save();
+
+  await notifyUser({
+    body:
+      status === "cancelled"
+        ? "Your consultation payment was cancelled."
+        : "Your consultation payment failed. No consultation was confirmed.",
+    link: `/book/${booking?.vetProfileId.toString() ?? ""}`,
+    title: status === "cancelled" ? "Payment cancelled" : "Payment failed",
+    type: "payment",
+    userId: payment.userId,
+  });
 
   if (booking) {
     booking.status = status === "cancelled" ? "cancelled" : "payment_failed";

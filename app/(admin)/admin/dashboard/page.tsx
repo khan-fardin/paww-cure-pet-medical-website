@@ -17,6 +17,7 @@ import { Document } from "@/lib/db/models/Document";
 import { Pet } from "@/lib/db/models/Pet";
 import { Reminder } from "@/lib/db/models/Reminder";
 import { Review } from "@/lib/db/models/Review";
+import { calculatePaymentSplit } from "@/lib/config/fees";
 import { User } from "@/lib/db/models/User";
 import { VetProfile } from "@/lib/db/models/VetProfile";
 
@@ -120,8 +121,8 @@ export default async function AdminDashboardPage() {
   ]);
 
   const monthRevenue = revenueRows[0]?.total ?? 0;
-  const platformFee = Math.round(monthRevenue * 0.12);
-  const vetPayouts = Math.max(monthRevenue - platformFee, 0);
+  const { platformFee, vetPayout: vetPayouts } =
+    calculatePaymentSplit(monthRevenue);
   const alertsPending = pendingVets + failedPayments + hiddenReviews;
 
   const stats = [
@@ -273,7 +274,7 @@ export default async function AdminDashboardPage() {
               value={formatBDT(monthRevenue)}
             />
             <Metric
-              detail="Estimated platform share at 12%"
+              detail="Platform commission at 20%"
               icon={CreditCard}
               label="Platform Fee"
               value={formatBDT(platformFee)}

@@ -14,11 +14,6 @@ const bookConsultationSchema = z.object({
   notes: z.string().optional(),
 });
 
-// TODO: Implement real payment processing
-// TODO: Add email notifications for booking confirmation
-// TODO: Implement slot availability checking
-// TODO: Add cancellation policy
-
 export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get("access_token")?.value;
@@ -99,7 +94,6 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Verify pet usership
     const pet = await Pet.findById(parsed.data.petId);
     if (!pet || pet.userId.toString() !== payload.userId) {
       return NextResponse.json(
@@ -116,9 +110,6 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-
-    // TODO: Check slot availability
-    // TODO: Process payment
 
     const consultation = await Consultation.create({
       userId: payload.userId,

@@ -46,7 +46,9 @@ export default async function ModDashboardPage() {
   ] = await Promise.all([
     VetProfile.countDocuments({ applicationStatus: "submitted" }),
     VetProfile.countDocuments({ applicationStatus: "submitted" }),
-    Review.countDocuments({ isVisible: false }),
+    Review.countDocuments({
+      $or: [{ isVisible: false }, { "reports.0": { $exists: true } }],
+    }),
     Consultation.countDocuments({
       status: { $in: ["scheduled", "ongoing"] },
       paymentStatus: "completed",
@@ -60,7 +62,9 @@ export default async function ModDashboardPage() {
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .limit(5),
-    Review.find({ isVisible: false })
+    Review.find({
+      $or: [{ isVisible: false }, { "reports.0": { $exists: true } }],
+    })
       .populate("vetId", "clinicName")
       .sort({ createdAt: -1 })
       .limit(5),

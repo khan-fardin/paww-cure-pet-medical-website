@@ -14,11 +14,13 @@ export const metadata: Metadata = {
 type ModTicket = {
   _id: { toString(): string };
   assignedModId?: { email?: string; name?: string };
+  callEndedAt?: Date;
   callStartedAt?: Date;
   category: string;
   createdAt: Date;
   description: string;
   messages: { message: string; senderType: string; timestamp: Date }[];
+  moderatorNotes?: string;
   priority: "low" | "medium" | "high" | "critical";
   resolvedAt?: Date;
   status: "open" | "in-progress" | "in-call" | "closed" | "on-hold";
@@ -176,6 +178,11 @@ export default async function TicketsPage() {
                               Support call active
                             </span>
                           ) : null}
+                          {ticket.callStartedAt ? (
+                            <span className="text-xs font-bold text-slate-400">
+                              Started {formatDate(ticket.callStartedAt)}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -288,6 +295,8 @@ export default async function TicketsPage() {
 
                 <TicketHistoryModal
                   category={ticket.category}
+                  callEndedAt={ticket.callEndedAt?.toISOString()}
+                  callStartedAt={ticket.callStartedAt?.toISOString()}
                   createdAt={new Date(ticket.createdAt).toISOString()}
                   description={ticket.description}
                   messages={ticket.messages.map((message) => ({
@@ -296,6 +305,7 @@ export default async function TicketsPage() {
                     timestamp: new Date(message.timestamp).toISOString(),
                   }))}
                   priority={ticket.priority}
+                  moderatorNotes={ticket.moderatorNotes}
                   resolvedAt={ticket.resolvedAt?.toISOString()}
                   subject={ticket.subject}
                   userEmail={ticket.userId?.email}

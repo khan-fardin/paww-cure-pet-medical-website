@@ -43,8 +43,8 @@ export function PublicNav() {
           const data = await response.json();
           setUser(data.user);
         }
-      } catch (error) {
-        console.log("Not authenticated");
+      } catch {
+        setUser(null);
       } finally {
         setLoading(false);
       }

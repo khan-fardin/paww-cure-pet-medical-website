@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 
 import { UserPageScaffold } from "@/components/user/UserPageScaffold";
+import { DocumentUploader } from "@/components/user/DocumentUploader";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Document } from "@/lib/db/models/Document";
-import "@/lib/db/models/Pet";
+import { Pet } from "@/lib/db/models/Pet";
 
 export const metadata: Metadata = {
   title: "Documents | pawwcure",
@@ -23,13 +24,20 @@ export default async function DocumentsPage() {
   const session = await getSession();
   await dbConnect();
 
-  const documents = session
-    ? ((await Document.find({ userId: session.userId })
+  const [documents, pets] = session
+    ? await Promise.all([
+        Document.find({ userId: session.userId })
         .populate("petId", "name")
         .sort({ createdAt: -1 })
         .limit(24)
-        .lean()) as unknown as UserDocument[])
-    : [];
+        .lean(),
+        Pet.find({ userId: session.userId, isActive: true })
+          .select("name")
+          .sort({ createdAt: 1 })
+          .lean(),
+      ])
+    : [[], []];
+  const typedDocuments = documents as unknown as UserDocument[];
 
   return (
     <UserPageScaffold
@@ -39,9 +47,14 @@ export default async function DocumentsPage() {
       eyebrow="Health vault"
       title="Documents"
     >
-      {documents.length > 0 ? (
+      <DocumentUploader
+        pets={(pets as { _id: { toString(): string }; name: string }[]).map(
+          (pet) => ({ id: pet._id.toString(), name: pet.name })
+        )}
+      />
+      {typedDocuments.length > 0 ? (
         <div className="grid gap-5 md:grid-cols-2">
-          {documents.map((document) => (
+          {typedDocuments.map((document) => (
             <div
               className="rounded-[2.5rem] border border-slate-100 bg-white p-7 shadow-sm"
               key={document._id.toString()}
@@ -54,6 +67,12 @@ export default async function DocumentsPage() {
                 {new Date(document.createdAt).toLocaleDateString()} /{" "}
                 {document.mimeType}
               </p>
+              <a
+                className="mt-4 inline-flex text-sm font-bold text-emerald-700"
+                href={`/api/documents/${document._id.toString()}/download`}
+              >
+                Open document
+              </a>
             </div>
           ))}
         </div>

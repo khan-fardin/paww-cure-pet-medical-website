@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { User } from "@/lib/db/models/User";
+import { notifyUser } from "@/lib/services/notification.service";
 
 const updateRoleSchema = z.object({
   role: z.enum(["mod"]),
@@ -87,6 +88,15 @@ export async function PATCH(
 
     user.role = parsed.data.role;
     await user.save();
+
+    await notifyUser({
+      body: "An administrator assigned you the moderator role. Your moderator dashboard is now available.",
+      email: true,
+      link: "/mod/dashboard",
+      title: "Moderator access granted",
+      type: "system",
+      userId: user._id,
+    });
 
     return NextResponse.json({
       success: true,

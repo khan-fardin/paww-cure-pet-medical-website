@@ -4,9 +4,9 @@ import mongoose from "mongoose";
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
-import { Notification } from "@/lib/db/models/Notification";
 import "@/lib/db/models/Pet";
 import "@/lib/db/models/User";
+import { notifyUser } from "@/lib/services/notification.service";
 import {
   createAgoraChannelName,
   createAgoraRtcToken,
@@ -109,12 +109,13 @@ async function getOrCreateRoom(
     }
 
     if (isVet && wasScheduled && req.method === "POST") {
-      await Notification.create({
+      await notifyUser({
         body: `${vet.name ?? "Your vet"} has started the consultation. Join the room now.`,
+        email: true,
         link: `/consultation/${consultation._id.toString()}`,
         title: "Your consultation is starting",
         type: "consultation",
-        userId: user._id,
+        userId: user._id.toString(),
       });
     }
 

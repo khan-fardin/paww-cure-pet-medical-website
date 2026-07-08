@@ -11,7 +11,7 @@ export default function PaymentsPage() {
     <UserPageScaffold
       actionHref="/vets"
       actionLabel="Book Consult"
-      description="Payments skeleton for Stripe checkout sessions, webhook-confirmed consultation status, invoices, and refunds."
+      description="Payments skeleton for SSLCommerz checkout sessions, webhook-confirmed consultation status, invoices, and refunds."
       eyebrow="Billing"
       title="Payments"
     />

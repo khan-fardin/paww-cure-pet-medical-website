@@ -5,21 +5,30 @@ import mongoose from "mongoose";
 
 import { getSession } from "@/lib/auth/session";
 import { dbConnect } from "@/lib/db/connect";
-import { Consultation } from "@/lib/db/models/Consultation";
+import { Payment } from "@/lib/db/models/Payment";
 import "@/lib/db/models/Pet";
-import { User } from "@/lib/db/models/User";
+import "@/lib/db/models/User";
 
 export const metadata: Metadata = {
   title: "Earnings | pawwcure",
 };
 
-type TransactionRow = {
+type PaymentRow = {
   _id: { toString(): string };
-  fees: { total: number };
+  amount: number;
+  createdAt: Date;
+  paidAt?: Date;
+  payoutStatus: "pending" | "paid";
   petId?: { name?: string };
-  scheduledAt: Date;
-  status: string;
-  type: string;
+  platformFee: number;
+  tranId: string;
+  vetPayout: number;
+};
+
+type TotalRow = {
+  _id: "paid" | "pending";
+  count: number;
+  total: number;
 };
 
 function Card({
@@ -39,7 +48,7 @@ function Card({
 }
 
 function formatBDT(value: number) {
-  return `BDT ${new Intl.NumberFormat("en-BD").format(value)}`;
+  return `BDT ${new Intl.NumberFormat("en-BD").format(Math.round(value))}`;
 }
 
 export default async function EarningsPage() {
@@ -54,52 +63,46 @@ export default async function EarningsPage() {
   }
 
   await dbConnect();
-
-  const now = new Date();
   const vetObjectId = new mongoose.Types.ObjectId(session.userId);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [vetUser, monthRows, totalRows, transactions] = await Promise.all([
-    User.findById(session.userId).select("name").lean<{ name?: string }>(),
-    Consultation.aggregate<{ total: number }>([
+  const [totals, transactions] = await Promise.all([
+    Payment.aggregate<TotalRow>([
       {
         $match: {
-          paymentStatus: "completed",
-          scheduledAt: { $gte: monthStart },
+          status: "paid",
           vetId: vetObjectId,
         },
       },
-      { $group: { _id: null, total: { $sum: "$fees.total" } } },
-    ]),
-    Consultation.aggregate<{ total: number }>([
       {
-        $match: {
-          paymentStatus: "completed",
-          vetId: vetObjectId,
+        $group: {
+          _id: "$payoutStatus",
+          count: { $sum: 1 },
+          total: { $sum: "$vetPayout" },
         },
       },
-      { $group: { _id: null, total: { $sum: "$fees.total" } } },
     ]),
-    Consultation.find({
-      paymentStatus: "completed",
+    Payment.find({
+      status: "paid",
       vetId: session.userId,
     })
       .populate("petId", "name")
-      .sort({ scheduledAt: -1 })
-      .limit(30)
-      .lean<TransactionRow[]>(),
+      .sort({ paidAt: -1, createdAt: -1 })
+      .limit(40)
+      .lean(),
   ]);
 
-  const monthTotal = monthRows[0]?.total ?? 0;
-  const totalEarned = totalRows[0]?.total ?? 0;
-  const pendingPayout = Math.round(monthTotal * 0.8);
+  const totalMap = new Map(totals.map((row) => [row._id, row]));
+  const pendingBalance = totalMap.get("pending")?.total ?? 0;
+  const paidOut = totalMap.get("paid")?.total ?? 0;
+  const totalEarned = pendingBalance + paidOut;
 
   return (
     <section className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">My Earnings</h1>
         <p className="mt-2 text-slate-500">
-          Revenue from completed paid consultations assigned to you.
+          Real payout totals from paid consultations. Admin pays pending
+          balances manually and marks them paid.
         </p>
       </div>
 
@@ -108,22 +111,10 @@ export default async function EarningsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                This month
-              </p>
-              <p className="mt-2 text-3xl font-bold">{formatBDT(monthTotal)}</p>
-            </div>
-            <DollarSign className="h-10 w-10 text-teal-100" />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Estimated payout
+                Pending balance
               </p>
               <p className="mt-2 text-3xl font-bold">
-                {formatBDT(pendingPayout)}
+                {formatBDT(pendingBalance)}
               </p>
             </div>
             <CreditCard className="h-10 w-10 text-amber-100" />
@@ -134,7 +125,19 @@ export default async function EarningsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Total earned
+                Total paid out
+              </p>
+              <p className="mt-2 text-3xl font-bold">{formatBDT(paidOut)}</p>
+            </div>
+            <DollarSign className="h-10 w-10 text-teal-100" />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Lifetime payout
               </p>
               <p className="mt-2 text-3xl font-bold">
                 {formatBDT(totalEarned)}
@@ -146,52 +149,38 @@ export default async function EarningsPage() {
       </div>
 
       <Card>
-        <div className="mb-6">
-          <h2 className="mb-4 text-2xl font-bold">Payout Information</h2>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Bank account holder
-            </label>
-            <input
-              className="mt-2 w-full rounded-2xl border border-slate-100 px-4 py-3 text-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-              defaultValue={vetUser?.name ?? ""}
-              type="text"
-            />
-          </div>
-        </div>
-        <button className="w-full rounded-2xl bg-teal-600 px-6 py-3 font-bold text-white transition hover:bg-teal-700">
-          Request Payout
-        </button>
-      </Card>
-
-      <Card>
-        <h2 className="mb-6 text-2xl font-bold">Transaction History</h2>
+        <h2 className="mb-6 text-2xl font-bold">Consultation Earnings</h2>
         <div className="space-y-3">
-          {transactions.length === 0 ? (
+          {(transactions as unknown as PaymentRow[]).length === 0 ? (
             <p className="text-sm text-slate-500">
-              No completed paid consultations yet.
+              No paid consultations yet.
             </p>
           ) : (
-            transactions.map((transaction) => (
+            (transactions as unknown as PaymentRow[]).map((payment) => (
               <div
-                className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"
-                key={transaction._id.toString()}
+                className="grid gap-4 rounded-2xl bg-slate-50 p-4 md:grid-cols-[1fr_140px_140px_120px]"
+                key={payment._id.toString()}
               >
                 <div>
-                  <p className="font-bold capitalize text-slate-900">
-                    {transaction.type} consultation -{" "}
-                    {transaction.petId?.name ?? "Patient"}
+                  <p className="font-bold text-slate-900">
+                    {payment.petId?.name ?? "Patient"} consultation
                   </p>
                   <p className="mt-1 text-sm text-slate-500">
-                    {new Date(transaction.scheduledAt).toLocaleDateString()}
+                    {payment.tranId} /{" "}
+                    {new Date(payment.paidAt ?? payment.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-emerald-700">
-                    {formatBDT(transaction.fees.total)}
+                <Amount label="Gross" value={payment.amount} />
+                <Amount label="Platform fee" value={payment.platformFee} />
+                <div className="text-left md:text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Your payout
+                  </p>
+                  <p className="mt-1 font-bold text-emerald-700">
+                    {formatBDT(payment.vetPayout)}
                   </p>
                   <p className="mt-1 text-xs capitalize text-slate-500">
-                    {transaction.status}
+                    {payment.payoutStatus}
                   </p>
                 </div>
               </div>
@@ -200,5 +189,16 @@ export default async function EarningsPage() {
         </div>
       </Card>
     </section>
+  );
+}
+
+function Amount({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 font-bold text-slate-900">{formatBDT(value)}</p>
+    </div>
   );
 }
