@@ -22,12 +22,12 @@ pawwcure connects pet users with verified vets for booking, payment, video consu
 
 | Role | Purpose | Main Routes |
 | --- | --- | --- |
-| User | Pet account, pet records, booking, consultation, reviews, support | `/dashboard`, `/pets`, `/book/[vetId]`, `/consultations`, `/support`, `/profile` |
+| User | Pet owner account, pet records, booking, consultation, reviews, support | `/dashboard`, `/pets`, `/book/[vetId]`, `/consultations`, `/support`, `/profile` |
 | Vet | Verified provider account, availability, consultations, prescriptions, earnings | `/vet/dashboard`, `/vet/availability`, `/vet/consultations`, `/vet/patients`, `/vet/earnings`, `/vet/reviews` |
 | Moderator | Operational support, vet application review, ticket handling, review flags | `/mod/dashboard`, `/mod/vets`, `/mod/tickets`, `/mod/consultations`, `/mod/flags` |
 | Admin | Platform control, users, roles, vet approval, payments, review audit | `/admin/dashboard`, `/admin/users`, `/admin/vets`, `/admin/payments`, `/admin/review-audit`, `/admin/roles` |
 
-> Project terminology rule: this codebase uses **user** consistently for pet accounts.
+> Project terminology rule: this codebase uses **user**, not **owner**.
 
 ## Current Progress
 
@@ -267,43 +267,6 @@ JWT_SECRET=replace-with-at-least-32-characters
 MONGODB_URI=mongodb+srv://user:password@cluster.example.mongodb.net/pawwcure
 ```
 
-Required for booking/payment:
-
-```env
-SSL_Store_ID=
-SSL_Store_Password=
-```
-
-Required for Agora consultation rooms:
-
-```env
-AGORA_APP_ID=
-AGORA_APP_CERTIFICATE=
-NEXT_PUBLIC_AGORA_APP_ID=
-```
-
-Required for Cloudinary uploads:
-
-```env
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-```
-
-Optional/private document and email services should be configured when those flows are tested:
-
-```env
-AWS_REGION=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-S3_BUCKET_NAME=
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-EMAIL_FROM=
-```
-
 ### 3. Run development server
 
 ```bash
@@ -383,7 +346,7 @@ scripts/
 - Keep database schemas in `lib/db/models`.
 - Use Cloudinary for displayable profile/application media.
 - Use S3 presigned URLs for private clinical documents.
-- Use `user` terminology consistently for pet accounts.
+- Use `user` terminology instead of `owner`.
 - Keep mobile layouts fully functional before desktop polish.
 - Do not store auth tokens in localStorage.
 - Do not pass private file bytes through the Next.js server.
