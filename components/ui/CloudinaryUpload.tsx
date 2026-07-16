@@ -26,7 +26,7 @@ type CloudinaryUploadProps = {
 };
 
 type SignaturePayload = {
-  allowed_formats: string;
+  allowedFormats: string[];
   apiKey: string;
   cloudName: string;
   folder: string;
@@ -37,6 +37,19 @@ type SignaturePayload = {
   timestamp: number;
   type: "authenticated" | "upload";
 };
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  if (!text) return {} as T;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(
+      `Upload service returned an invalid response (${response.status}).`,
+    );
+  }
+}
 
 export function CloudinaryUpload({
   accept,
@@ -60,12 +73,20 @@ export function CloudinaryUpload({
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
-      const signed = (await signResponse.json()) as {
+      const signed = await readJsonResponse<{
         data?: SignaturePayload;
         message?: string;
-      };
+      }>(signResponse);
       if (!signResponse.ok || !signed.data) {
         throw new Error(signed.message ?? "Could not prepare upload.");
+      }
+      const extension = file.name.split(".").pop()?.toLowerCase();
+      if (!extension || !signed.data.allowedFormats.includes(extension)) {
+        throw new Error(
+          `Unsupported file type. Allowed: ${signed.data.allowedFormats.join(
+            ", ",
+          )}.`,
+        );
       }
       if (file.size > signed.data.maxBytes) {
         throw new Error(
@@ -76,7 +97,6 @@ export function CloudinaryUpload({
       const formData = new FormData();
       formData.set("file", file);
       formData.set("api_key", signed.data.apiKey);
-      formData.set("allowed_formats", signed.data.allowed_formats);
       formData.set("timestamp", String(signed.data.timestamp));
       formData.set("signature", signed.data.signature);
       formData.set("folder", signed.data.folder);
@@ -87,7 +107,7 @@ export function CloudinaryUpload({
         `https://api.cloudinary.com/v1_1/${signed.data.cloudName}/${signed.data.resourceType}/upload`,
         { body: formData, method: "POST" },
       );
-      const uploaded = (await uploadResponse.json()) as {
+      const uploaded = await readJsonResponse<{
         bytes?: number;
         error?: { message?: string };
         format?: string;
@@ -95,7 +115,7 @@ export function CloudinaryUpload({
         public_id?: string;
         resource_type?: "image" | "raw" | "video";
         secure_url?: string;
-      };
+      }>(uploadResponse);
       if (
         !uploadResponse.ok ||
         !uploaded.public_id ||

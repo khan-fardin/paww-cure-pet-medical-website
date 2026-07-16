@@ -15,7 +15,6 @@ import {
   Mic,
   MicOff,
   PhoneOff,
-  Send,
   Video,
   VideoOff,
 } from "lucide-react";
@@ -25,6 +24,8 @@ import type {
   ICameraVideoTrack,
   IMicrophoneAudioTrack,
 } from "agora-rtc-sdk-ng";
+
+import { ChatPanel } from "@/components/consultation/ChatPanel";
 
 type RoomState =
   | { status: "loading" }
@@ -38,12 +39,6 @@ type RoomState =
       token: string;
       uid: string;
     };
-
-type Message = {
-  author: "Me" | "System";
-  body: string;
-  id: string;
-};
 
 type LocalTracks = {
   audio: IMicrophoneAudioTrack | null;
@@ -71,14 +66,6 @@ export function AgoraConsultationRoom({
   const [isJoined, setIsJoined] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      author: "System",
-      body: "Chat messages are local for now. Persisted chat can be added after the room flow is stable.",
-      id: "welcome",
-    },
-  ]);
-  const [draft, setDraft] = useState("");
 
   useEffect(() => {
     let ignore = false;
@@ -188,7 +175,7 @@ export function AgoraConsultationRoom({
 
   const roomLabel = useMemo(() => {
     if (roomState.status !== "ready") return "Preparing Agora room";
-    return `${roomState.channelName} · ${roomState.displayName}`;
+    return `${roomState.channelName} / ${roomState.displayName}`;
   }, [roomState]);
 
   async function toggleMic() {
@@ -201,21 +188,6 @@ export function AgoraConsultationRoom({
     const next = !isCameraOn;
     await localTracksRef.current.video?.setEnabled(next);
     setIsCameraOn(next);
-  }
-
-  function sendMessage() {
-    const text = draft.trim();
-    if (!text) return;
-
-    setMessages((current) => [
-      ...current,
-      {
-        author: "Me",
-        body: text,
-        id: crypto.randomUUID(),
-      },
-    ]);
-    setDraft("");
   }
 
   return (
@@ -303,50 +275,12 @@ export function AgoraConsultationRoom({
           </div>
         </section>
 
-        <aside className="flex min-h-[420px] flex-col border-l border-white/10 bg-slate-950 p-5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
-            Chat
-          </p>
-          <h2 className="mt-2 text-2xl font-bold">
-            {roomState.status === "ready" && roomState.role === "vet"
-              ? "Clinical notes"
-              : "Care chat"}
-          </h2>
-
-          <div className="mt-5 flex-1 space-y-3 overflow-y-auto">
-            {messages.map((message) => (
-              <div
-                className="rounded-2xl bg-white/10 p-4 text-sm text-slate-200"
-                key={message.id}
-              >
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {message.author}
-                </p>
-                {message.body}
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 flex gap-2">
-            <input
-              className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-400"
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") sendMessage();
-              }}
-              placeholder="Type a message..."
-              value={draft}
-            />
-            <button
-              className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white"
-              onClick={sendMessage}
-              type="button"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
-        </aside>
+        <ChatPanel
+          consultationId={consultationId}
+          currentUserId={roomState.status === "ready" ? roomState.uid : null}
+        />
       </div>
     </main>
   );
 }
+

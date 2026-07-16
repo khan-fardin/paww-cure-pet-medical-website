@@ -11,6 +11,8 @@ const requestSchema = z.object({
   kind: z.enum(["avatar", "pet", "vet-document"]),
 });
 
+export const runtime = "nodejs";
+
 const uploadPolicy = {
   avatar: {
     allowedFormats: ["jpg", "jpeg", "png", "webp"],
@@ -36,52 +38,66 @@ const uploadPolicy = {
 } as const;
 
 export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Log in before uploading files." },
+        { status: 401 }
+      );
+    }
+
+    const parsed = requestSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, message: "Invalid upload type." },
+        { status: 400 }
+      );
+    }
+
+    if (parsed.data.kind === "vet-document" && session.role !== "user") {
+      return NextResponse.json(
+        { success: false, message: "Only applicants can upload credentials." },
+        { status: 403 }
+      );
+    }
+
+    const policy = uploadPolicy[parsed.data.kind];
+    const timestamp = Math.floor(Date.now() / 1000);
+    const publicIdPrefix = `${session.userId}-${crypto.randomUUID()}`;
+    const paramsToSign = {
+      folder: policy.folder,
+      public_id: publicIdPrefix,
+      timestamp,
+      type: policy.type,
+    };
+    const signature = getCloudinary().utils.api_sign_request(
+      paramsToSign,
+      process.env.CLOUDINARY_API_SECRET!
+    );
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...getCloudinaryClientConfig(),
+        ...paramsToSign,
+        allowedFormats: policy.allowedFormats,
+        maxBytes: policy.maxBytes,
+        resourceType: policy.resourceType,
+        signature,
+      },
+    });
+  } catch (error) {
+    console.error("[media/sign] POST error:", error);
     return NextResponse.json(
-      { success: false, message: "Log in before uploading files." },
-      { status: 401 },
+      {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not prepare Cloudinary upload.",
+      },
+      { status: 500 }
     );
   }
-
-  const parsed = requestSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, message: "Invalid upload type." },
-      { status: 400 },
-    );
-  }
-
-  if (parsed.data.kind === "vet-document" && session.role !== "user") {
-    return NextResponse.json(
-      { success: false, message: "Only applicants can upload credentials." },
-      { status: 403 },
-    );
-  }
-
-  const policy = uploadPolicy[parsed.data.kind];
-  const timestamp = Math.floor(Date.now() / 1000);
-  const publicIdPrefix = `${session.userId}-${crypto.randomUUID()}`;
-  const paramsToSign = {
-    allowed_formats: policy.allowedFormats.join(","),
-    folder: policy.folder,
-    public_id: publicIdPrefix,
-    timestamp,
-    type: policy.type,
-  };
-  const signature = getCloudinary().utils.api_sign_request(
-    paramsToSign,
-    process.env.CLOUDINARY_API_SECRET!,
-  );
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      ...getCloudinaryClientConfig(),
-      ...paramsToSign,
-      maxBytes: policy.maxBytes,
-      resourceType: policy.resourceType,
-      signature,
-    },
-  });
 }
