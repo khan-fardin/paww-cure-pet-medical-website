@@ -1,14 +1,14 @@
 # pawwcure
 
-Mobile-first veterinary consultation platform built with Next.js, MongoDB, Agora, SSLCommerz sandbox payments, Cloudinary media uploads, S3 document storage, and role-based dashboards.
+Veterinary consultation platform built with Next.js.
 
 pawwcure connects pet users with verified vets for booking, payment, video consultation, prescriptions, support, reviews, and operational moderation. The project is currently in MVP/product-build stage: the main user, vet, moderator, and admin workflows exist, with several production hardening tasks still listed below.
 
 ## Tech Stack
 
 - **Framework:** Next.js App Router, React, TypeScript
-- **Styling:** Tailwind CSS, Plus Jakarta Sans visual direction
-- **Database:** MongoDB with Mongoose
+- **Styling:** Tailwind CSS
+- **Database:** Mongoose
 - **Authentication:** JWT in httpOnly cookies
 - **Video/audio:** Agora
 - **Payments:** SSLCommerz sandbox flow
@@ -26,8 +26,6 @@ pawwcure connects pet users with verified vets for booking, payment, video consu
 | Vet | Verified provider account, availability, consultations, prescriptions, earnings | `/vet/dashboard`, `/vet/availability`, `/vet/consultations`, `/vet/patients`, `/vet/earnings`, `/vet/reviews` |
 | Moderator | Operational support, vet application review, ticket handling, review flags | `/mod/dashboard`, `/mod/vets`, `/mod/tickets`, `/mod/consultations`, `/mod/flags` |
 | Admin | Platform control, users, roles, vet approval, payments, review audit | `/admin/dashboard`, `/admin/users`, `/admin/vets`, `/admin/payments`, `/admin/review-audit`, `/admin/roles` |
-
-> Project terminology rule: this codebase uses **user**, not **owner**.
 
 ## Current Progress
 
