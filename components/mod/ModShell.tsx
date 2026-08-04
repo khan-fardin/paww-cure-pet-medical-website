@@ -8,11 +8,11 @@ import {
   Stethoscope,
   Users,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { HeaderProfileChip } from "@/components/layout/HeaderProfileChip";
 import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileModNav } from "@/components/mod/MobileModNav";
 
@@ -74,12 +74,12 @@ export function ModShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3">
             <NotificationBar />
-            <Image
-              alt="Moderator"
-              className="h-10 w-10 rounded-full object-cover"
-              height={40}
-              src={modAvatar}
-              width={40}
+            <HeaderProfileChip
+              accent="amber"
+              avatar={modAvatar}
+              href="/mod/dashboard"
+              label="Moderator"
+              name="Content Team"
             />
           </div>
         </div>

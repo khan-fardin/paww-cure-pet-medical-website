@@ -5,7 +5,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, User as UserIcon } from "lucide-react";
+import {
+  ChevronDown,
+  HeartPulse,
+  LifeBuoy,
+  LogOut,
+  MessageSquareText,
+  Settings,
+  Stethoscope,
+  User as UserIcon,
+} from "lucide-react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
 import { MobilePublicNav } from "@/components/layout/MobilePublicNav";
@@ -22,6 +31,45 @@ type User = {
   avatar?: string;
   role: string;
 };
+
+function roleHome(role: string) {
+  if (role === "vet") return "/vet/dashboard";
+  if (role === "mod") return "/mod/dashboard";
+  if (role === "admin") return "/admin/dashboard";
+  return "/dashboard";
+}
+
+function accountLinks(role: string) {
+  if (role === "vet") {
+    return [
+      { href: "/vet/consultations", icon: Stethoscope, label: "Consultations" },
+      { href: "/vet/profile", icon: Settings, label: "Vet Profile" },
+      { href: "/vet/reviews", icon: MessageSquareText, label: "Reviews" },
+    ];
+  }
+
+  if (role === "mod") {
+    return [
+      { href: "/mod/tickets", icon: LifeBuoy, label: "Support Tickets" },
+      { href: "/mod/vets", icon: Stethoscope, label: "Vet Review" },
+      { href: "/mod/flags", icon: MessageSquareText, label: "Flags" },
+    ];
+  }
+
+  if (role === "admin") {
+    return [
+      { href: "/admin/users", icon: UserIcon, label: "Users" },
+      { href: "/admin/payments", icon: HeartPulse, label: "Payments" },
+      { href: "/admin/settings", icon: Settings, label: "Settings" },
+    ];
+  }
+
+  return [
+    { href: "/profile", icon: UserIcon, label: "My Profile" },
+    { href: "/pets", icon: HeartPulse, label: "My Pets" },
+    { href: "/support", icon: LifeBuoy, label: "Support" },
+  ];
+}
 
 export function PublicNav() {
   const router = useRouter();
@@ -94,66 +142,102 @@ export function PublicNav() {
             ) : user ? (
               <div className="relative">
                 <button
-                  className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-sm transition hover:bg-slate-50 sm:px-3"
+                  className="group inline-flex min-w-0 items-center gap-3 rounded-full border border-slate-200 bg-white py-1.5 pl-1.5 pr-2 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-md sm:pr-3"
                   onClick={() => setShowDropdown(!showDropdown)}
                   type="button"
                 >
-                  {user.avatar ? (
+                  <span className="relative shrink-0">
                     <Image
                       alt={user.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                      height={32}
-                      src={user.avatar}
-                      width={32}
+                      className="h-10 w-10 rounded-full object-cover ring-2 ring-white"
+                      height={40}
+                      src={
+                        user.avatar ??
+                        `https://i.pravatar.cc/120?u=${encodeURIComponent(user.name)}`
+                      }
+                      width={40}
                     />
-                  ) : (
-                    <div className="h-8 w-8 rounded-full bg-emerald-600 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {user.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <span className="hidden sm:inline text-sm font-medium text-slate-700">
-                    {user.name.split(" ")[0]}
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
                   </span>
-                  <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" />
+                  <span className="hidden min-w-0 text-left sm:block">
+                    <span className="block max-w-36 truncate text-sm font-bold leading-tight text-slate-900">
+                      {user.name}
+                    </span>
+                    <span className="block max-w-36 truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {user.role}
+                    </span>
+                  </span>
+                  <ChevronDown className="hidden h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 sm:block" />
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-slate-200 bg-white shadow-lg">
-                    <div className="px-4 py-3 border-b border-slate-100">
-                      <p className="text-sm font-bold text-slate-900">
-                        {user.name}
-                      </p>
-                      <p className="text-xs text-slate-500 capitalize">
-                        {user.role}
-                      </p>
+                  <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl shadow-slate-200/80">
+                    <div className="bg-slate-50/80 px-4 py-4">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          alt={user.name}
+                          className="h-11 w-11 rounded-full object-cover ring-2 ring-white"
+                          height={44}
+                          src={
+                            user.avatar ??
+                            `https://i.pravatar.cc/120?u=${encodeURIComponent(user.name)}`
+                          }
+                          width={44}
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-950">
+                            {user.name}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                            {user.role} account
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    <Link
-                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
-                      href={
-                        user.role === "user"
-                          ? "/dashboard"
-                          : user.role === "vet"
-                            ? "/vet/dashboard"
-                            : user.role === "mod"
-                              ? "/mod/dashboard"
-                              : "/admin/dashboard"
-                      }
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      <UserIcon className="h-4 w-4" />
-                      Dashboard
-                    </Link>
+                    <div className="p-2">
+                      <Link
+                        className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-slate-800 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        href={roleHome(user.role)}
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                          <UserIcon className="h-4 w-4" />
+                        </span>
+                        <span>Dashboard</span>
+                      </Link>
 
-                    <button
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition border-t border-slate-100"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Log out
-                    </button>
+                      {accountLinks(user.role).map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+                            href={item.href}
+                            key={item.href}
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+
+                    <div className="border-t border-slate-100 p-2">
+                      <button
+                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50"
+                        onClick={handleLogout}
+                        type="button"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                          <LogOut className="h-4 w-4" />
+                        </span>
+                        Log out
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

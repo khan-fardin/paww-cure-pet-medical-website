@@ -1,58 +1,39 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  Activity,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart3,
+  Calendar,
   Download,
+  Filter,
+  Star,
   TrendingUp,
   Users,
-  Activity,
-  BarChart3,
-  PieChart,
-  Calendar,
-  Filter,
-  ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
+
+import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Payment } from "@/lib/db/models/Payment";
+import { User } from "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
+import "@/lib/db/models/Pet";
 
 export const metadata: Metadata = {
   title: "Analytics | pawwcure Admin",
 };
 
-const specialties = [
-  { name: "Emergency Medicine", demand: 342, percentage: 28 },
-  { name: "Orthopedics", demand: 198, percentage: 16 },
-  { name: "Dermatology", demand: 176, percentage: 14 },
-  { name: "Cardiology", demand: 152, percentage: 12 },
-  { name: "Dentistry", demand: 128, percentage: 10 },
-  { name: "Surgery", demand: 125, percentage: 10 },
-  { name: "Other", demand: 90, percentage: 10 },
-];
-
-const topVets = [
-  {
-    name: "Dr. Amina Parveen",
-    consultations: 342,
-    revenue: "BDT 156,420",
-    rating: 4.8,
-  },
-  {
-    name: "Dr. Ryan Mitchell",
-    consultations: 201,
-    revenue: "BDT 108,540",
-    rating: 4.6,
-  },
-  {
-    name: "Dr. Samuel Cross",
-    consultations: 128,
-    revenue: "BDT 58,900",
-    rating: 4.7,
-  },
-  {
-    name: "Dr. Farzana Khan",
-    consultations: 89,
-    revenue: "BDT 42,100",
-    rating: 4.9,
-  },
-];
+type CountAggregate = { _id: string; count: number };
+type RevenueAggregate = { _id: string; revenue: number };
+type SpecialtyAggregate = { _id: string; demand: number };
+type TopVetAggregate = {
+  _id: string;
+  consultations: number;
+  name?: string;
+  rating?: number;
+  revenue?: number;
+};
 
 function Card({
   children,
@@ -70,255 +51,409 @@ function Card({
   );
 }
 
-export default function AdminAnalyticsPage() {
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 1);
+}
+
+function formatCurrency(value: number) {
+  return `BDT ${Math.round(value).toLocaleString("en-US")}`;
+}
+
+function formatCompactCurrency(value: number) {
+  if (value >= 1_000_000) return `BDT ${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `BDT ${Math.round(value / 1_000)}K`;
+  return formatCurrency(value);
+}
+
+function formatPercentChange(current: number, previous: number) {
+  if (previous === 0 && current === 0) return "0%";
+  if (previous === 0) return "+100%";
+  const value = ((current - previous) / previous) * 100;
+  const prefix = value > 0 ? "+" : "";
+  return `${prefix}${value.toFixed(1)}%`;
+}
+
+function trendTone(current: number, previous: number) {
+  return current >= previous ? "text-emerald-700" : "text-slate-600";
+}
+
+function trendIcon(current: number, previous: number) {
+  return current >= previous ? (
+    <ArrowUpRight className="h-4 w-4" />
+  ) : (
+    <ArrowDownRight className="h-4 w-4" />
+  );
+}
+
+function weekLabel(index: number) {
+  return `Week ${index + 1}`;
+}
+
+function makeWeekSeries<T extends { _id: string }>({
+  currentMonthStart,
+  getValue,
+  rows,
+}: {
+  currentMonthStart: Date;
+  getValue: (row: T) => number;
+  rows: T[];
+}) {
+  const values = [0, 0, 0, 0, 0];
+
+  for (const row of rows) {
+    const date = new Date(`${row._id}T00:00:00`);
+    const week = Math.min(
+      4,
+      Math.floor((date.getDate() - currentMonthStart.getDate()) / 7)
+    );
+    values[week] += getValue(row);
+  }
+
+  const max = Math.max(...values, 1);
+
+  return values.map((value, index) => ({
+    label: weekLabel(index),
+    value,
+    width: Math.max((value / max) * 100, value > 0 ? 8 : 0),
+  }));
+}
+
+export default async function AdminAnalyticsPage() {
+  await dbConnect();
+
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const nextMonthStart = endOfMonth(now);
+  const previousMonthStart = new Date(
+    currentMonthStart.getFullYear(),
+    currentMonthStart.getMonth() - 1,
+    1
+  );
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 7);
+
+  const [
+    consultationsThisMonth,
+    consultationsPreviousMonth,
+    usersThisWeek,
+    usersPreviousWeek,
+    totalUsers,
+    inactiveUsers,
+    revenueThisMonth,
+    revenuePreviousMonth,
+    weeklyConsultations,
+    weeklyRevenue,
+    specialties,
+    topVets,
+  ] = await Promise.all([
+    Consultation.countDocuments({
+      createdAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+    }),
+    Consultation.countDocuments({
+      createdAt: { $gte: previousMonthStart, $lt: currentMonthStart },
+    }),
+    User.countDocuments({ createdAt: { $gte: weekStart, $lte: now } }),
+    User.countDocuments({
+      createdAt: {
+        $gte: new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000),
+        $lt: weekStart,
+      },
+    }),
+    User.countDocuments({}),
+    User.countDocuments({ isActive: false }),
+    Payment.aggregate<{ total: number }>([
+      {
+        $match: {
+          paidAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+          status: "paid",
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    Payment.aggregate<{ total: number }>([
+      {
+        $match: {
+          paidAt: { $gte: previousMonthStart, $lt: currentMonthStart },
+          status: "paid",
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    Consultation.aggregate<CountAggregate>([
+      {
+        $match: {
+          createdAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { date: "$createdAt", format: "%Y-%m-%d" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    Payment.aggregate<RevenueAggregate>([
+      {
+        $match: {
+          paidAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+          status: "paid",
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { date: "$paidAt", format: "%Y-%m-%d" } },
+          revenue: { $sum: "$amount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    Consultation.aggregate<SpecialtyAggregate>([
+      {
+        $match: {
+          createdAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+        },
+      },
+      {
+        $lookup: {
+          as: "vetProfile",
+          foreignField: "userId",
+          from: "vetprofiles",
+          localField: "vetId",
+        },
+      },
+      { $unwind: "$vetProfile" },
+      { $unwind: "$vetProfile.specializations" },
+      {
+        $group: {
+          _id: "$vetProfile.specializations",
+          demand: { $sum: 1 },
+        },
+      },
+      { $sort: { demand: -1 } },
+      { $limit: 8 },
+    ]),
+    Consultation.aggregate<TopVetAggregate>([
+      {
+        $match: {
+          createdAt: { $gte: currentMonthStart, $lt: nextMonthStart },
+        },
+      },
+      {
+        $group: {
+          _id: "$vetId",
+          consultations: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          as: "user",
+          foreignField: "_id",
+          from: "users",
+          localField: "_id",
+        },
+      },
+      {
+        $lookup: {
+          as: "profile",
+          foreignField: "userId",
+          from: "vetprofiles",
+          localField: "_id",
+        },
+      },
+      {
+        $lookup: {
+          as: "payments",
+          foreignField: "vetId",
+          from: "payments",
+          localField: "_id",
+        },
+      },
+      {
+        $project: {
+          consultations: 1,
+          name: { $arrayElemAt: ["$user.name", 0] },
+          rating: { $arrayElemAt: ["$profile.averageRating", 0] },
+          revenue: {
+            $sum: {
+              $map: {
+                as: "payment",
+                in: {
+                  $cond: [
+                    {
+                      $and: [
+                        { $eq: ["$$payment.status", "paid"] },
+                        { $gte: ["$$payment.paidAt", currentMonthStart] },
+                        { $lt: ["$$payment.paidAt", nextMonthStart] },
+                      ],
+                    },
+                    "$$payment.amount",
+                    0,
+                  ],
+                },
+                input: "$payments",
+              },
+            },
+          },
+        },
+      },
+      { $sort: { consultations: -1, revenue: -1 } },
+      { $limit: 5 },
+    ]),
+  ]);
+
+  const currentRevenue = revenueThisMonth[0]?.total ?? 0;
+  const previousRevenue = revenuePreviousMonth[0]?.total ?? 0;
+  const churnRate = totalUsers > 0 ? (inactiveUsers / totalUsers) * 100 : 0;
+  const consultationSeries = makeWeekSeries({
+    currentMonthStart,
+    getValue: (row: CountAggregate) => row.count,
+    rows: weeklyConsultations,
+  });
+  const revenueSeries = makeWeekSeries({
+    currentMonthStart,
+    getValue: (row: RevenueAggregate) => row.revenue,
+    rows: weeklyRevenue,
+  });
+  const totalSpecialtyDemand = specialties.reduce(
+    (sum, item) => sum + item.demand,
+    0
+  );
+
   return (
     <section className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="mb-2 inline-flex rounded-full bg-rose-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-700">
             Analytics
           </div>
           <h1 className="text-4xl font-bold">Platform Analytics</h1>
           <p className="mt-2 text-slate-500">
-            Track trends, user growth, and platform performance
+            Real platform trends from users, consultations, vets, and payments.
           </p>
         </div>
         <Link
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
-          href="#"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+          href="/api/admin/analytics/export"
         >
           <Download className="h-4 w-4" />
           Export CSV
         </Link>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600">
           <Calendar className="h-4 w-4" />
-          May 2026
-        </button>
-        <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
+          {now.toLocaleString("en-US", { month: "long", year: "numeric" })}
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600">
           <Filter className="h-4 w-4" />
-          Filters
-        </button>
+          Paid revenue / active data
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
+        <MetricCard
+          current={consultationsThisMonth}
+          icon={<Activity className="h-5 w-5" />}
+          label="Consultations"
+          note="This month"
+          previous={consultationsPreviousMonth}
+          tone="emerald"
+          value={consultationsThisMonth.toLocaleString("en-US")}
+        />
+        <MetricCard
+          current={usersThisWeek}
+          icon={<Users className="h-5 w-5" />}
+          label="User Growth"
+          note="New users this week"
+          previous={usersPreviousWeek}
+          tone="blue"
+          value={`+${usersThisWeek.toLocaleString("en-US")}`}
+        />
+        <MetricCard
+          current={currentRevenue}
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Revenue"
+          note="Paid this month"
+          previous={previousRevenue}
+          tone="purple"
+          value={formatCompactCurrency(currentRevenue)}
+        />
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-              <Activity className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-700 font-bold">
-              <ArrowUpRight className="h-4 w-4" />
-              +8.2%
-            </div>
-          </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Consultations
-          </p>
-          <p className="mt-1 text-3xl font-bold">4,284</p>
-          <p className="mt-1 text-xs text-slate-500">This month</p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
-              <Users className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-700 font-bold">
-              <ArrowUpRight className="h-4 w-4" />
-              +5.2%
-            </div>
-          </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            User Growth
-          </p>
-          <p className="mt-1 text-3xl font-bold">+142</p>
-          <p className="mt-1 text-xs text-slate-500">New users this week</p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-100 text-purple-700">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-700 font-bold">
-              <ArrowUpRight className="h-4 w-4" />
-              +18%
-            </div>
-          </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Revenue
-          </p>
-          <p className="mt-1 text-3xl font-bold">BDT 487K</p>
-          <p className="mt-1 text-xs text-slate-500">vs last month</p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
               <BarChart3 className="h-5 w-5" />
             </div>
-            <div className="flex items-center gap-1 text-xs text-slate-600 font-bold">
-              <ArrowDownRight className="h-4 w-4" />
-              -2.1%
+            <div className="flex items-center gap-1 text-xs font-bold text-slate-600">
+              {inactiveUsers.toLocaleString("en-US")} inactive
             </div>
           </div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Churn Rate
+            Inactive Rate
           </p>
-          <p className="mt-1 text-3xl font-bold">2.3%</p>
-          <p className="mt-1 text-xs text-slate-500">Inactive users</p>
+          <p className="mt-1 text-3xl font-bold">{churnRate.toFixed(1)}%</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Out of {totalUsers.toLocaleString("en-US")} accounts
+          </p>
         </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-5">
-            Consultation Volume
-          </p>
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 1</span>
-                <span className="text-xs font-bold text-slate-400">950</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
-                  style={{ width: "75%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 2</span>
-                <span className="text-xs font-bold text-slate-400">1,050</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
-                  style={{ width: "84%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 3</span>
-                <span className="text-xs font-bold text-slate-400">1,142</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
-                  style={{ width: "91%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 4</span>
-                <span className="text-xs font-bold text-slate-400">1,152</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-emerald-400 to-emerald-600 rounded-full"
-                  style={{ width: "92%" }}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-5">
-            Revenue Trend
-          </p>
-          <div className="space-y-3">
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 1</span>
-                <span className="text-xs font-bold text-slate-400">
-                  BDT 98K
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
-                  style={{ width: "70%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 2</span>
-                <span className="text-xs font-bold text-slate-400">
-                  BDT 112K
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
-                  style={{ width: "80%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 3</span>
-                <span className="text-xs font-bold text-slate-400">
-                  BDT 135K
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
-                  style={{ width: "97%" }}
-                />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">Week 4</span>
-                <span className="text-xs font-bold text-slate-400">
-                  BDT 142K
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-purple-400 to-purple-600 rounded-full"
-                  style={{ width: "100%" }}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
+        <SeriesCard
+          color="emerald"
+          items={consultationSeries}
+          title="Consultation Volume"
+          valueFormatter={(value) => value.toLocaleString("en-US")}
+        />
+        <SeriesCard
+          color="purple"
+          items={revenueSeries}
+          title="Revenue Trend"
+          valueFormatter={formatCompactCurrency}
+        />
       </div>
 
       <Card>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-5">
+        <p className="mb-5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Specialty Demand
         </p>
-        <div className="space-y-3">
-          {specialties.map((spec) => (
-            <div key={spec.name}>
-              <div className="flex items-end justify-between mb-2">
-                <span className="text-sm font-bold text-slate-600">
-                  {spec.name}
-                </span>
-                <span className="text-xs font-bold text-slate-400">
-                  {spec.demand} consultations ({spec.percentage}%)
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-full bg-linear-to-r from-rose-400 to-rose-600 rounded-full"
-                  style={{ width: `${spec.percentage * 3}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        {specialties.length > 0 ? (
+          <div className="space-y-3">
+            {specialties.map((spec) => {
+              const percentage =
+                totalSpecialtyDemand > 0
+                  ? (spec.demand / totalSpecialtyDemand) * 100
+                  : 0;
+
+              return (
+                <div key={spec._id}>
+                  <div className="mb-2 flex items-end justify-between gap-4">
+                    <span className="text-sm font-bold text-slate-600">
+                      {spec._id}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400">
+                      {spec.demand} consultation
+                      {spec.demand === 1 ? "" : "s"} ({percentage.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-linear-to-r from-rose-400 to-rose-600"
+                      style={{ width: `${Math.max(percentage, 3)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyState text="No specialty demand yet. Completed bookings will populate this chart." />
+        )}
       </Card>
 
       <Card>
@@ -329,49 +464,158 @@ export default function AdminAnalyticsPage() {
           <h2 className="mt-1 text-2xl font-bold">Highest Performers</h2>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="px-4 py-3 text-left font-bold text-slate-600">
-                  Vet
-                </th>
-                <th className="px-4 py-3 text-center font-bold text-slate-600">
-                  Consultations
-                </th>
-                <th className="px-4 py-3 text-center font-bold text-slate-600">
-                  Revenue
-                </th>
-                <th className="px-4 py-3 text-center font-bold text-slate-600">
-                  Rating
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {topVets.map((vet, idx) => (
-                <tr
-                  className="border-b border-slate-100 hover:bg-slate-50 transition"
-                  key={vet.name}
-                >
-                  <td className="px-4 py-4 font-bold text-slate-900">
-                    <span className="mr-3 text-slate-400">#{idx + 1}</span>
-                    {vet.name}
-                  </td>
-                  <td className="px-4 py-4 text-center font-bold text-slate-900">
-                    {vet.consultations}
-                  </td>
-                  <td className="px-4 py-4 text-center font-bold text-slate-900">
-                    {vet.revenue}
-                  </td>
-                  <td className="px-4 py-4 text-center font-bold text-slate-900">
-                    ⭐ {vet.rating}
-                  </td>
+        {topVets.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="px-4 py-3 text-left font-bold text-slate-600">
+                    Vet
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold text-slate-600">
+                    Consultations
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold text-slate-600">
+                    Revenue
+                  </th>
+                  <th className="px-4 py-3 text-center font-bold text-slate-600">
+                    Rating
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {topVets.map((vet, idx) => (
+                  <tr
+                    className="border-b border-slate-100 transition hover:bg-slate-50"
+                    key={vet._id.toString()}
+                  >
+                    <td className="px-4 py-4 font-bold text-slate-900">
+                      <span className="mr-3 text-slate-400">#{idx + 1}</span>
+                      {vet.name ?? "Unknown vet"}
+                    </td>
+                    <td className="px-4 py-4 text-center font-bold text-slate-900">
+                      {vet.consultations.toLocaleString("en-US")}
+                    </td>
+                    <td className="px-4 py-4 text-center font-bold text-slate-900">
+                      {formatCurrency(vet.revenue ?? 0)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-bold text-slate-900">
+                      <span className="inline-flex items-center justify-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        {(vet.rating ?? 0).toFixed(1)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState text="No vet performance data yet for this month." />
+        )}
       </Card>
     </section>
+  );
+}
+
+function MetricCard({
+  icon,
+  current,
+  label,
+  note,
+  previous,
+  tone,
+  value,
+}: {
+  current: number;
+  icon: React.ReactNode;
+  label: string;
+  note: string;
+  previous: number;
+  tone: "blue" | "emerald" | "purple";
+  value: string;
+}) {
+  const toneClass = {
+    blue: "bg-blue-100 text-blue-700",
+    emerald: "bg-emerald-100 text-emerald-700",
+    purple: "bg-purple-100 text-purple-700",
+  }[tone];
+  return (
+    <Card>
+      <div className="mb-4 flex items-center justify-between">
+        <div
+          className={`flex h-10 w-10 items-center justify-center rounded-2xl ${toneClass}`}
+        >
+          {icon}
+        </div>
+        <div
+          className={`flex items-center gap-1 text-xs font-bold ${trendTone(
+            current,
+            previous
+          )}`}
+        >
+          {trendIcon(current, previous)}
+          {formatPercentChange(current, previous)}
+        </div>
+      </div>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 text-3xl font-bold">{value}</p>
+      <p className="mt-1 text-xs text-slate-500">{note}</p>
+    </Card>
+  );
+}
+
+function SeriesCard({
+  color,
+  items,
+  title,
+  valueFormatter,
+}: {
+  color: "emerald" | "purple";
+  items: { label: string; value: number; width: number }[];
+  title: string;
+  valueFormatter: (value: number) => string;
+}) {
+  const colorClass =
+    color === "emerald"
+      ? "from-emerald-400 to-emerald-600"
+      : "from-purple-400 to-purple-600";
+
+  return (
+    <Card>
+      <p className="mb-5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {title}
+      </p>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item.label}>
+            <div className="mb-2 flex items-end justify-between">
+              <span className="text-sm font-bold text-slate-600">
+                {item.label}
+              </span>
+              <span className="text-xs font-bold text-slate-400">
+                {valueFormatter(item.value)}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full bg-linear-to-r ${colorClass}`}
+                style={{ width: `${item.width}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-500">
+      {text}
+    </div>
   );
 }

@@ -2,17 +2,16 @@ import {
   Clock,
   DollarSign,
   Home,
-  LogOut,
   MessageSquare,
   Settings,
   Stethoscope,
   Users,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { HeaderProfileChip } from "@/components/layout/HeaderProfileChip";
 import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileVetNav } from "@/components/vet/MobileVetNav";
 
@@ -95,15 +94,15 @@ export function VetShell({
 
           <div className="flex items-center gap-3">
             <NotificationBar />
-            <Image
-              alt={currentVet.name}
-              className="h-10 w-10 rounded-full object-cover"
-              height={40}
-              src={
+            <HeaderProfileChip
+              accent="teal"
+              avatar={
                 currentVet.avatar ??
                 `https://i.pravatar.cc/120?u=${encodeURIComponent(currentVet.name)}`
               }
-              width={40}
+              href="/vet/profile"
+              label={currentVet.specialty}
+              name={currentVet.name}
             />
           </div>
         </div>

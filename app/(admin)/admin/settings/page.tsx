@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
-  Save,
-  AlertCircle,
-  Settings as SettingsIcon,
   Bell,
-  Lock,
+  CheckCircle2,
   Database,
+  Lock,
+  ServerCog,
+  ShieldCheck,
+  WalletCards,
   Zap,
 } from "lucide-react";
+
+import { PLATFORM_COMMISSION_PERCENT } from "@/lib/config/fees";
+import { dbConnect } from "@/lib/db/connect";
+import { Consultation } from "@/lib/db/models/Consultation";
+import { Payment } from "@/lib/db/models/Payment";
+import { Pet } from "@/lib/db/models/Pet";
+import { User } from "@/lib/db/models/User";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 
 export const metadata: Metadata = {
   title: "Platform Settings | pawwcure Admin",
@@ -30,7 +38,159 @@ function Card({
   );
 }
 
-export default function AdminSettingsPage() {
+function envReady(...names: string[]) {
+  return names.every((name) => Boolean(process.env[name]?.trim()));
+}
+
+function StatusPill({ ready }: { ready: boolean }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+        ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+      }`}
+    >
+      {ready ? "Configured" : "Needs setup"}
+    </span>
+  );
+}
+
+function SettingRow({
+  description,
+  label,
+  value,
+}: {
+  description?: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-bold text-slate-900">{label}</p>
+          {description ? (
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        <p className="shrink-0 text-sm font-bold text-slate-700">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function ServiceCard({
+  description,
+  ready,
+  title,
+}: {
+  description: string;
+  ready: boolean;
+  title: string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-bold text-slate-900">{title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            {description}
+          </p>
+        </div>
+        <StatusPill ready={ready} />
+      </div>
+    </div>
+  );
+}
+
+export default async function AdminSettingsPage() {
+  await dbConnect();
+
+  const [
+    totalUsers,
+    activeUsers,
+    verifiedVets,
+    pendingVetApplications,
+    activePets,
+    paidPayments,
+    pendingPayouts,
+    activeConsultations,
+  ] = await Promise.all([
+    User.countDocuments({}),
+    User.countDocuments({ isActive: true }),
+    VetProfile.countDocuments({ isVerified: true, isActive: true }),
+    VetProfile.countDocuments({ applicationStatus: "submitted" }),
+    Pet.countDocuments({ isActive: true }),
+    Payment.countDocuments({ status: "paid" }),
+    Payment.countDocuments({ payoutStatus: "pending", status: "paid" }),
+    Consultation.countDocuments({ status: { $in: ["scheduled", "ongoing"] } }),
+  ]);
+
+  const appVersion = process.env.npm_package_version ?? "0.1.0";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "Not configured";
+  const nodeEnv = process.env.NODE_ENV ?? "development";
+
+  const services = [
+    {
+      description: "Required for all database-backed pages and APIs.",
+      ready: envReady("MONGODB_URI"),
+      title: "MongoDB",
+    },
+    {
+      description: "Required for secure login cookies and role sessions.",
+      ready: envReady("JWT_SECRET"),
+      title: "JWT Auth",
+    },
+    {
+      description: "Required for sandbox or production checkout callbacks.",
+      ready: envReady("SSL_Store_ID", "SSL_Store_Password"),
+      title: "SSLCommerz",
+    },
+    {
+      description: "Required for consultation video and audio calls.",
+      ready: envReady(
+        "AGORA_APP_ID",
+        "AGORA_APP_CERTIFICATE",
+        "NEXT_PUBLIC_AGORA_APP_ID"
+      ),
+      title: "Agora",
+    },
+    {
+      description: "Required for profile photos and vet application uploads.",
+      ready: envReady(
+        "CLOUDINARY_CLOUD_NAME",
+        "CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET"
+      ),
+      title: "Cloudinary",
+    },
+    {
+      description: "Optional for private clinical documents and attachments.",
+      ready: envReady("AWS_REGION", "S3_BUCKET_NAME"),
+      title: "S3 Documents",
+    },
+    {
+      description: "Optional email delivery for notifications and support.",
+      ready: envReady("SMTP_HOST", "SMTP_USER", "SMTP_PASS"),
+      title: "SMTP Email",
+    },
+  ];
+
+  const species =
+    (Pet.schema.path("species")?.options as { enum?: string[] } | undefined)
+      ?.enum ?? [];
+
+  const notificationTypes = [
+    "booking",
+    "consultation",
+    "payment",
+    "payout",
+    "review",
+    "support",
+    "system",
+  ];
+
   return (
     <section className="space-y-8">
       <div>
@@ -39,188 +199,100 @@ export default function AdminSettingsPage() {
         </div>
         <h1 className="text-4xl font-bold">Configuration</h1>
         <p className="mt-2 text-slate-500">
-          Manage platform fees, features, and global settings
+          Real platform configuration, service readiness, and operational
+          settings.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="mb-8">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Financial
             </p>
-            <h2 className="text-2xl font-bold mb-6">Revenue Settings</h2>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-900 mb-2">
-                  Platform Fee Percentage (%)
-                </label>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold placeholder-slate-400 outline-none focus:border-rose-300 focus:bg-white transition"
-                  defaultValue="20"
-                  readOnly
-                  type="number"
-                />
-                <p className="mt-2 text-xs text-slate-500">
-                  Retained from the displayed consultation price. Users are not
-                  charged an additional fee.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-900 mb-2">
-                  Payout Schedule (Days)
-                </label>
-                <select className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold outline-none focus:border-rose-300 focus:bg-white transition">
-                  <option>Every 7 days</option>
-                  <option>Every 14 days</option>
-                  <option>Every 30 days</option>
-                </select>
-                <p className="mt-2 text-xs text-slate-500">
-                  Automatic vet payout frequency
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-900 mb-2">
-                  Minimum Payout Amount (BDT)
-                </label>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold placeholder-slate-400 outline-none focus:border-rose-300 focus:bg-white transition"
-                  defaultValue="5000"
-                  type="number"
-                />
-                <p className="mt-2 text-xs text-slate-500">
-                  Minimum balance required for payout processing
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-slate-900 mb-2">
-                  Maximum Consultation Fee (BDT)
-                </label>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold placeholder-slate-400 outline-none focus:border-rose-300 focus:bg-white transition"
-                  defaultValue="2000"
-                  type="number"
-                />
-                <p className="mt-2 text-xs text-slate-500">
-                  Upper limit for vet fee setting
-                </p>
-              </div>
+            <h2 className="mb-6 text-2xl font-bold">Revenue Settings</h2>
+            <div className="space-y-4">
+              <SettingRow
+                description="Current code-level commission used by payment split calculation."
+                label="Platform commission"
+                value={`${PLATFORM_COMMISSION_PERCENT}%`}
+              />
+              <SettingRow
+                description="Payouts are manually marked paid by admin from the payments page."
+                label="Payout mode"
+                value="Manual admin payout"
+              />
+              <SettingRow
+                description="Current payment gateway configured in the payment model and booking flow."
+                label="Payment gateway"
+                value="SSLCommerz"
+              />
+              <SettingRow
+                description="Paid payment records still waiting for manual payout completion."
+                label="Pending payout records"
+                value={pendingPayouts.toLocaleString("en-US")}
+              />
             </div>
           </div>
 
           <div className="border-t border-slate-100 pt-8">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Features
             </p>
-            <h2 className="text-2xl font-bold mb-6">Feature Flags</h2>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
-                <div>
-                  <p className="font-bold text-slate-900">Video Consultations</p>
-                  <p className="text-xs text-slate-500">
-                    Enable video call functionality
-                  </p>
-                </div>
-                <button className="relative inline-flex h-8 w-14 items-center rounded-full bg-emerald-600 transition hover:bg-emerald-700">
-                  <span className="absolute left-1 inline-block h-6 w-6 transform rounded-full bg-white transition" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
-                <div>
-                  <p className="font-bold text-slate-900">Audio Consultations</p>
-                  <p className="text-xs text-slate-500">
-                    Enable audio call functionality
-                  </p>
-                </div>
-                <button className="relative inline-flex h-8 w-14 items-center rounded-full bg-emerald-600 transition hover:bg-emerald-700">
-                  <span className="absolute left-1 inline-block h-6 w-6 transform rounded-full bg-white transition" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
-                <div>
-                  <p className="font-bold text-slate-900">Chat Consultations</p>
-                  <p className="text-xs text-slate-500">
-                    Enable text chat functionality
-                  </p>
-                </div>
-                <button className="relative inline-flex h-8 w-14 items-center rounded-full bg-emerald-600 transition hover:bg-emerald-700">
-                  <span className="absolute left-1 inline-block h-6 w-6 transform rounded-full bg-white transition" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
-                <div>
-                  <p className="font-bold text-slate-900">Vet Verification</p>
-                  <p className="text-xs text-slate-500">
-                    Require license verification for vets
-                  </p>
-                </div>
-                <button className="relative inline-flex h-8 w-14 items-center rounded-full bg-emerald-600 transition hover:bg-emerald-700">
-                  <span className="absolute left-1 inline-block h-6 w-6 transform rounded-full bg-white transition" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
-                <div>
-                  <p className="font-bold text-slate-900">Maintenance Mode</p>
-                  <p className="text-xs text-slate-500">
-                    Hide platform from public, show message
-                  </p>
-                </div>
-                <button className="relative inline-flex h-8 w-14 items-center rounded-full bg-slate-300 transition hover:bg-slate-400">
-                  <span className="absolute right-1 inline-block h-6 w-6 transform rounded-full bg-white transition" />
-                </button>
-              </div>
+            <h2 className="mb-6 text-2xl font-bold">Enabled Workflows</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FeatureCard
+                icon={<Zap className="h-5 w-5" />}
+                label="Video and audio consults"
+                value="Agora enabled by env"
+              />
+              <FeatureCard
+                icon={<Bell className="h-5 w-5" />}
+                label="Notifications"
+                value="Database backed"
+              />
+              <FeatureCard
+                icon={<ShieldCheck className="h-5 w-5" />}
+                label="Vet verification"
+                value={`${pendingVetApplications} pending`}
+              />
+              <FeatureCard
+                icon={<WalletCards className="h-5 w-5" />}
+                label="Payout accounting"
+                value={`${paidPayments} paid records`}
+              />
             </div>
           </div>
         </Card>
 
         <div className="space-y-6">
           <Card>
-            <button className="w-full flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 py-4 text-sm font-bold text-white transition hover:bg-rose-700">
-              <Save className="h-4 w-4" />
-              Save Settings
-            </button>
-          </Card>
-
-          <Card>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Platform
             </p>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-bold text-slate-500">Version</p>
-                <p className="text-lg font-bold text-slate-900">2.1.0</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-500">Last Updated</p>
-                <p className="text-sm font-bold text-slate-900">May 3, 2026</p>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-500">Status</p>
-                <p className="text-sm font-bold text-emerald-700">Operational</p>
-              </div>
+            <div className="space-y-4">
+              <SettingRow label="Version" value={appVersion} />
+              <SettingRow label="Environment" value={nodeEnv} />
+              <SettingRow label="App URL" value={appUrl} />
+              <SettingRow
+                label="Status"
+                value={envReady("MONGODB_URI", "JWT_SECRET") ? "Operational" : "Needs setup"}
+              />
             </div>
           </Card>
 
           <Card className="border border-blue-200 bg-blue-50">
             <div className="flex items-start gap-3">
-              <Database className="h-5 w-5 text-blue-700 shrink-0 mt-0.5" />
+              <Database className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
               <div>
-                <p className="font-bold text-blue-900">Database</p>
-                <p className="mt-1 text-xs text-blue-800">
-                  Database connection is active and healthy
+                <p className="font-bold text-blue-900">Database Snapshot</p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-800">
+                  {activeUsers.toLocaleString("en-US")} active users,{" "}
+                  {verifiedVets.toLocaleString("en-US")} verified vets,{" "}
+                  {activePets.toLocaleString("en-US")} active pets, and{" "}
+                  {activeConsultations.toLocaleString("en-US")} active
+                  consultations.
                 </p>
-                <button className="mt-2 text-xs font-bold text-blue-700 hover:text-blue-900">
-                  View Details →
-                </button>
               </div>
             </div>
           </Card>
@@ -228,99 +300,86 @@ export default function AdminSettingsPage() {
       </div>
 
       <Card>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-          Allowed Pets
+        <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Services
         </p>
-        <h2 className="text-2xl font-bold mb-6">Supported Species</h2>
-
-        <div className="grid gap-3 md:grid-cols-4">
-          {[
-            "Dogs",
-            "Cats",
-            "Birds",
-            "Rabbits",
-            "Hamsters",
-            "Guinea Pigs",
-            "Reptiles",
-            "Fish",
-          ].map((species) => (
-            <label
-              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 cursor-pointer hover:bg-rose-50 transition"
-              key={species}
-            >
-              <input
-                className="h-5 w-5 rounded-lg border-slate-300 text-rose-600 focus:ring-rose-500"
-                type="checkbox"
-                defaultChecked
-              />
-              <span className="font-bold text-slate-900">{species}</span>
-            </label>
+        <h2 className="mb-6 text-2xl font-bold">Integration Readiness</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          {services.map((service) => (
+            <ServiceCard key={service.title} {...service} />
           ))}
         </div>
       </Card>
 
-      <Card>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4">
-          Notifications
-        </p>
-        <h2 className="text-2xl font-bold mb-6">Email Templates</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Pets
+          </p>
+          <h2 className="mb-6 text-2xl font-bold">Supported Species</h2>
+          <div className="flex flex-wrap gap-2">
+            {species.map((item) => (
+              <span
+                className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold capitalize text-slate-700"
+                key={item}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </Card>
 
-        <div className="space-y-3">
-          {[
-            { name: "New User Welcome", status: "active" },
-            { name: "Vet Verification", status: "active" },
-            { name: "Consultation Reminder", status: "active" },
-            { name: "Weekly Summary", status: "inactive" },
-            { name: "Payment Confirmation", status: "active" },
-            { name: "Support Ticket Update", status: "active" },
-          ].map((template) => (
-            <div
-              className="flex items-center justify-between rounded-[2rem] border border-slate-100 hover:border-rose-200 hover:bg-rose-50 transition p-5"
-              key={template.name}
-            >
-              <div>
-                <p className="font-bold text-slate-900">{template.name}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                    template.status === "active"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {template.status}
-                </span>
-                <button className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50">
-                  Edit
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+        <Card>
+          <p className="mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Notifications
+          </p>
+          <h2 className="mb-6 text-2xl font-bold">Supported Types</h2>
+          <div className="flex flex-wrap gap-2">
+            {notificationTypes.map((item) => (
+              <span
+                className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-bold capitalize text-emerald-700"
+                key={item}
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       <Card className="border border-amber-200 bg-amber-50">
         <div className="flex items-start gap-4">
-          <AlertCircle className="h-6 w-6 text-amber-700 shrink-0 mt-0.5" />
+          <Lock className="mt-0.5 h-6 w-6 shrink-0 text-amber-700" />
           <div>
-            <p className="font-bold text-amber-900">
-              Dangerous Zone - Admin Only
+            <p className="font-bold text-amber-900">Admin Safety</p>
+            <p className="mt-2 text-sm leading-relaxed text-amber-800">
+              Destructive controls are intentionally not exposed on this page.
+              Data reset, production fee changes, and payout automation should
+              be handled through reviewed admin tools with audit logging.
             </p>
-            <p className="mt-2 text-sm text-amber-800">
-              These actions cannot be undone. Use with extreme caution.
-            </p>
-            <div className="mt-4 flex gap-3">
-              <button className="rounded-2xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-700 hover:bg-amber-50 transition">
-                Reset Demo Data
-              </button>
-              <button className="rounded-2xl border border-red-300 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 transition">
-                Wipe All User Data
-              </button>
-            </div>
           </div>
         </div>
       </Card>
     </section>
+  );
+}
+
+function FeatureCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-5">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-rose-700">
+        {icon}
+      </div>
+      <p className="font-bold text-slate-900">{label}</p>
+      <p className="mt-1 text-xs font-semibold text-slate-500">{value}</p>
+    </div>
   );
 }

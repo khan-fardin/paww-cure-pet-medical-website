@@ -9,11 +9,11 @@ import {
   FileText,
   History,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { HeaderProfileChip } from "@/components/layout/HeaderProfileChip";
 import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileAdminNav } from "@/components/admin/MobileAdminNav";
 
@@ -78,12 +78,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-3">
             <NotificationBar />
-            <Image
-              alt="Admin"
-              className="h-10 w-10 rounded-full object-cover"
-              height={40}
-              src={adminAvatar}
-              width={40}
+            <HeaderProfileChip
+              accent="rose"
+              avatar={adminAvatar}
+              href="/admin/settings"
+              label="Super Admin"
+              name="Admin"
             />
           </div>
         </div>

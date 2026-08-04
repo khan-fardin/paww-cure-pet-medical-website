@@ -15,6 +15,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { HeaderProfileChip } from "@/components/layout/HeaderProfileChip";
 import { NotificationBar } from "@/components/layout/NotificationBar";
 import { MobileUserNav } from "@/components/user/MobileUserNav";
 
@@ -112,15 +113,15 @@ export function UserShell({
               {activePet?.name ?? "Pets"}
             </Link>
             <NotificationBar />
-            <Image
-              alt={currentUser.name}
-              className="h-10 w-10 rounded-full object-cover"
-              height={40}
-              src={
+            <HeaderProfileChip
+              accent="emerald"
+              avatar={
                 currentUser.avatar ??
                 `https://i.pravatar.cc/120?u=${encodeURIComponent(currentUser.name)}`
               }
-              width={40}
+              href="/profile"
+              label="Profile"
+              name={currentUser.name}
             />
           </div>
         </div>
