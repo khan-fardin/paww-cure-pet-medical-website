@@ -36,6 +36,7 @@ pawwcure connects pet users with verified vets for booking, payment, video consu
 - Mobile-first role shells for user, vet, moderator, and admin.
 - JWT login/register/logout/me APIs.
 - User pet creation, pet listing, pet profile, records, prescriptions, documents, reminders, payments, profile photo upload.
+- User payment history page backed by real SSLCommerz payment records.
 - Vet application wizard with Cloudinary uploads for profile photo, license scan, and degree certificate.
 - Moderator/admin vet review workflow with access to submitted documents.
 - Vet approval updates vet profile and promotes the linked user role to `vet`.
@@ -51,6 +52,7 @@ pawwcure connects pet users with verified vets for booking, payment, video consu
 - Downloadable prescription PDF generation.
 - User health-record and prescription pages.
 - Support ticket workflow for users and moderators.
+- Moderator consultation monitor with user and doctor contact numbers for operational fallback.
 - Moderator ticket actions, direct phone-call support, notes, timestamps, and minimal ticket history modal.
 - Notifications model/API/service and notification bar integration.
 - Reviews with real data, helpful votes, reports, user review history, vet review page, moderator flags, and admin audit.

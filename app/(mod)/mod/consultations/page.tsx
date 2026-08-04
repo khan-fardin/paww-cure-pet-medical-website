@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, Clock, Video } from "lucide-react";
+import { AlertTriangle, Clock, Mail, Phone, Video } from "lucide-react";
 
 import { dbConnect } from "@/lib/db/connect";
 import { Consultation } from "@/lib/db/models/Consultation";
+import { VetProfile } from "@/lib/db/models/VetProfile";
 import "@/lib/db/models/Pet";
 import "@/lib/db/models/User";
 
@@ -20,8 +21,18 @@ type ModConsultation = {
   startedAt?: Date;
   status: "scheduled" | "ongoing" | "completed" | "cancelled" | "no-show";
   type: string;
-  userId?: { email?: string; name?: string };
-  vetId?: { email?: string; name?: string };
+  userId?: { email?: string; name?: string; phone?: string };
+  vetId?: {
+    _id?: { toString(): string };
+    email?: string;
+    name?: string;
+    phone?: string;
+  };
+};
+
+type VetContact = {
+  phoneNumber?: string;
+  userId: { toString(): string };
 };
 
 function Card({
@@ -70,14 +81,28 @@ export default async function ModConsultationsPage() {
 
   const consultations = (await Consultation.find({
     scheduledAt: { $gte: pastWindow, $lte: futureWindow },
-    status: { $in: ["scheduled", "ongoing", "completed", "cancelled", "no-show"] },
+    status: {
+      $in: ["scheduled", "ongoing", "completed", "cancelled", "no-show"],
+    },
   })
     .populate("petId", "name species")
-    .populate("userId", "name email")
-    .populate("vetId", "name email")
+    .populate("userId", "name email phone")
+    .populate("vetId", "name email phone")
     .sort({ scheduledAt: 1 })
     .limit(100)
     .lean()) as unknown as ModConsultation[];
+
+  const vetUserIds = consultations
+    .map((consultation) => consultation.vetId?._id?.toString())
+    .filter((id): id is string => Boolean(id));
+
+  const vetProfiles = (await VetProfile.find({ userId: { $in: vetUserIds } })
+    .select("phoneNumber userId")
+    .lean()) as unknown as VetContact[];
+
+  const vetContactByUserId = new Map(
+    vetProfiles.map((profile) => [profile.userId.toString(), profile])
+  );
 
   const active = consultations.filter((item) =>
     ["scheduled", "ongoing"].includes(item.status)
@@ -93,8 +118,8 @@ export default async function ModConsultationsPage() {
           </div>
           <h1 className="text-3xl font-bold">Consultation Monitor</h1>
           <p className="mt-2 max-w-2xl text-slate-500">
-            Watch booked consultations, identify delayed vet joins, and help
-            users or vets reach the correct room.
+            Watch booked consultations, identify delayed vet joins, and contact
+            users or doctors when a session needs help.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -132,6 +157,12 @@ export default async function ModConsultationsPage() {
           consultations.map((consultation) => {
             const id = consultation._id.toString();
             const flagged = needsAttention(consultation);
+            const vetUserId = consultation.vetId?._id?.toString();
+            const vetProfile = vetUserId
+              ? vetContactByUserId.get(vetUserId)
+              : undefined;
+            const vetPhone =
+              consultation.vetId?.phone ?? vetProfile?.phoneNumber;
 
             return (
               <Card
@@ -162,13 +193,24 @@ export default async function ModConsultationsPage() {
                       {consultation.petId?.name ?? "Pet"} with{" "}
                       {consultation.vetId?.name ?? "Vet"}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      User: {consultation.userId?.name ?? "User"} ·{" "}
-                      {consultation.userId?.email ?? "No email"}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Vet: {consultation.vetId?.email ?? "No email"} · Type:{" "}
-                      {consultation.type}
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <ContactCard
+                        email={consultation.userId?.email}
+                        label="User contact"
+                        name={consultation.userId?.name ?? "User"}
+                        phone={consultation.userId?.phone}
+                      />
+                      <ContactCard
+                        email={consultation.vetId?.email}
+                        label="Doctor contact"
+                        name={consultation.vetId?.name ?? "Vet"}
+                        phone={vetPhone}
+                      />
+                    </div>
+
+                    <p className="mt-3 text-sm font-bold uppercase tracking-wider text-slate-400">
+                      Type: {consultation.type}
                     </p>
                     <div className="mt-4 flex items-center gap-2 text-sm font-bold text-slate-700">
                       <Clock className="h-4 w-4 text-slate-400" />
@@ -198,6 +240,47 @@ export default async function ModConsultationsPage() {
         )}
       </div>
     </section>
+  );
+}
+
+function ContactCard({
+  email,
+  label,
+  name,
+  phone,
+}: {
+  email?: string;
+  label: string;
+  name: string;
+  phone?: string;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-4">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 font-bold text-slate-950">{name}</p>
+      <div className="mt-3 space-y-2 text-sm text-slate-600">
+        <p className="flex min-w-0 items-center gap-2">
+          <Mail className="h-4 w-4 shrink-0 text-slate-400" />
+          <span className="truncate">{email ?? "No email"}</span>
+        </p>
+        {phone ? (
+          <a
+            className="inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-3 py-2 font-bold text-emerald-700 shadow-sm ring-1 ring-slate-100"
+            href={`tel:${phone}`}
+          >
+            <Phone className="h-4 w-4" />
+            {phone}
+          </a>
+        ) : (
+          <p className="flex items-center gap-2 text-slate-400">
+            <Phone className="h-4 w-4" />
+            No phone
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
