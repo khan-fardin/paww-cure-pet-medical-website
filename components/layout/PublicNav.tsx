@@ -12,9 +12,8 @@ import { MobilePublicNav } from "@/components/layout/MobilePublicNav";
 
 const navLinks = [
   { href: "/vets", label: "Find Vets" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
-  { href: "/apply-as-vet", label: "For Vets" },
+  { href: "/apply-as-vet", label: "Join as a Vet" },
   { href: "/articles", label: "Articles" },
 ] as const;
 

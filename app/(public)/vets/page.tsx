@@ -25,7 +25,7 @@ export default function VetsPage() {
   const [minRating, setMinRating] = useState(0);
   const [page, setPage] = useState(1);
 
-  const { vets, loading, error, pagination, refetch } = useVets({
+  const { vets, loading, error, filters, pagination, refetch } = useVets({
     city: city || undefined,
     specialization: specialization || undefined,
     minRating: minRating > 0 ? minRating : undefined,
@@ -33,14 +33,7 @@ export default function VetsPage() {
     limit: 12,
   });
 
-  const specialties = [
-    "All",
-    "General",
-    "Surgery",
-    "Dentistry",
-    "Dermatology",
-    "Cardiology",
-  ];
+  const specialties = ["All", ...filters.specializations];
 
   return (
     <section className="px-6 pb-24 pt-32">
@@ -71,7 +64,7 @@ export default function VetsPage() {
                 }}
                 className={`rounded-full px-5 py-2 text-sm font-bold transition ${
                   (specialty === "All" && !specialization) ||
-                  specialization === specialty
+                  specialization.toLowerCase() === specialty.toLowerCase()
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : "border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                 }`}
@@ -90,12 +83,18 @@ export default function VetsPage() {
                 type="text"
                 placeholder="Search by city..."
                 value={city}
+                list="vet-city-options"
                 onChange={(e) => {
                   setCity(e.target.value);
                   setPage(1);
                 }}
                 className="w-full pl-10 pr-4 py-2 rounded-2xl border border-slate-200 text-sm focus:border-emerald-500 focus:outline-none"
               />
+              <datalist id="vet-city-options">
+                {filters.cities.map((item) => (
+                  <option key={item} value={item} />
+                ))}
+              </datalist>
             </div>
 
             <select

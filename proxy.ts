@@ -5,6 +5,7 @@ import { signToken, verifyToken, type TokenPayload } from "@/lib/auth/jwt";
 const PUBLIC_PATHS = [
   "/",
   "/vets",
+  "/about",
   "/login",
   "/register",
   "/apply-as-vet",

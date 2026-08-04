@@ -473,7 +473,7 @@ export async function LandingPage() {
         </section>
       ) : null}
 
-      <section className="px-6 py-20" id="pricing">
+      <section className="px-6 py-20" id="cta">
         <div className="relative mx-auto max-w-5xl overflow-hidden rounded-[3rem] bg-emerald-950 p-12 text-center md:p-20">
           <div className="relative z-10">
             <h2 className="mb-6 text-3xl font-bold text-white md:text-5xl">

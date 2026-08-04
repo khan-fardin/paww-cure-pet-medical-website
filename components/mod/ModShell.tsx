@@ -30,7 +30,7 @@ export function ModShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#1A1A1A]">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-100 bg-white px-5 py-6 lg:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 overflow-y-auto overscroll-contain border-r border-slate-100 bg-white px-5 py-6 [scrollbar-width:thin] lg:block">
         <BrandLogo className="mb-10" />
         <div className="mb-8 rounded-[2rem] bg-amber-50 p-5 text-amber-950">
           <p className="text-[10px] font-bold uppercase tracking-wider opacity-70">
@@ -40,7 +40,7 @@ export function ModShell({ children }: { children: ReactNode }) {
           <p className="mt-1 text-sm font-semibold opacity-70">5 pending items</p>
         </div>
 
-        <nav className="space-y-2">
+        <nav className="space-y-2 pb-8">
           {navItems.map((item) => {
             const Icon = item.icon;
 

@@ -32,7 +32,7 @@ pawwcure connects pet users with verified vets for booking, payment, video consu
 ### Done
 
 - Public landing page and public navigation.
-- Public pages for vets, vet profile, articles, pricing, about, contact, login, register, forgot password, and apply-as-vet.
+- Public pages for vets, vet profile, articles, about, contact, login, register, forgot password, and apply-as-vet.
 - Mobile-first role shells for user, vet, moderator, and admin.
 - JWT login/register/logout/me APIs.
 - User pet creation, pet listing, pet profile, records, prescriptions, documents, reminders, payments, profile photo upload.
@@ -166,7 +166,6 @@ The server creates short-lived presigned upload/read URLs. File bytes do not pas
 - `/vets/[vetId]`
 - `/articles`
 - `/articles/[slug]`
-- `/pricing`
 - `/about`
 - `/contact`
 

@@ -39,6 +39,10 @@ interface UseVetsReturn {
   vets: Vet[];
   loading: boolean;
   error: string | null;
+  filters: {
+    cities: string[];
+    specializations: string[];
+  };
   pagination?: {
     page: number;
     limit: number;
@@ -60,6 +64,10 @@ export function useVets(params?: UseVetsParams): UseVetsReturn {
   const [loading, setLoading] = useState(!params?.skip);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<Pagination | undefined>();
+  const [filters, setFilters] = useState<UseVetsReturn["filters"]>({
+    cities: [],
+    specializations: [],
+  });
 
   const fetchVets = async () => {
     try {
@@ -87,6 +95,10 @@ export function useVets(params?: UseVetsParams): UseVetsReturn {
 
       const data = await response.json();
       setVets(data.data || []);
+      setFilters({
+        cities: data.filters?.cities || [],
+        specializations: data.filters?.specializations || [],
+      });
       if (data.pagination) {
         setPagination(data.pagination);
       }
@@ -116,6 +128,7 @@ export function useVets(params?: UseVetsParams): UseVetsReturn {
     vets,
     loading,
     error,
+    filters,
     pagination,
     refetch: fetchVets,
   };

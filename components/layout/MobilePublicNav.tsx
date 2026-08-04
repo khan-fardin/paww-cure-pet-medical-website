@@ -2,7 +2,6 @@
 
 import {
   BookOpen,
-  CircleDollarSign,
   Home,
   Info,
   Menu,
@@ -20,14 +19,13 @@ import { cn } from "@/lib/utils/cn";
 const dockLinks = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/vets", icon: Search, label: "Vets" },
-  { href: "/pricing", icon: CircleDollarSign, label: "Pricing" },
+  { href: "/about", icon: Info, label: "About" },
   { href: "/articles", icon: BookOpen, label: "Articles" },
 ] as const;
 
 const menuLinks = [
   ...dockLinks,
-  { href: "/about", icon: Info, label: "About" },
-  { href: "/apply-as-vet", icon: Stethoscope, label: "For Vets" },
+  { href: "/apply-as-vet", icon: Stethoscope, label: "Join as a Vet" },
   { href: "/login", icon: UserRound, label: "Log in" },
   { href: "/register", icon: UserRound, label: "Join Now" },
 ] as const;

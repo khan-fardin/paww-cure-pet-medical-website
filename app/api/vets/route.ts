@@ -44,6 +44,16 @@ const vetApplicationSchema = z.object({
   specialties: z.array(z.string()).default([]),
 });
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeList(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean))
+  );
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -68,18 +78,21 @@ export async function GET(req: NextRequest) {
     }
 
     await dbConnect();
-    const filter: Record<string, unknown> = {
+    const baseFilter: Record<string, unknown> = {
       isVerified: true,
       isActive: true,
       acceptingNewPatients: true,
     };
+    const filter: Record<string, unknown> = { ...baseFilter };
 
     if (parsed.data.city) {
       filter.clinicCity = { $regex: parsed.data.city, $options: "i" };
     }
 
     if (parsed.data.specialization) {
-      filter.specializations = { $in: [parsed.data.specialization] };
+      filter.specializations = {
+        $in: [new RegExp(`^${escapeRegex(parsed.data.specialization)}$`, "i")],
+      };
     }
 
     if (parsed.data.minRating) {
@@ -88,18 +101,27 @@ export async function GET(req: NextRequest) {
 
     const skip = (parsed.data.page - 1) * parsed.data.limit;
 
-    const vets = await VetProfile.find(filter)
+    const [vets, total, specializationOptions, cityOptions] = await Promise.all([
+      VetProfile.find(filter)
       .select("-__v")
       .populate("userId", "name avatar")
       .limit(parsed.data.limit)
       .skip(skip)
-      .sort({ averageRating: -1 });
-
-    const total = await VetProfile.countDocuments(filter);
+        .sort({ averageRating: -1 }),
+      VetProfile.countDocuments(filter),
+      VetProfile.distinct("specializations", baseFilter),
+      VetProfile.distinct("clinicCity", baseFilter),
+    ]);
 
     return NextResponse.json({
       success: true,
       data: vets,
+      filters: {
+        cities: normalizeList(cityOptions).sort((a, b) => a.localeCompare(b)),
+        specializations: normalizeList(specializationOptions).sort((a, b) =>
+          a.localeCompare(b)
+        ),
+      },
       pagination: {
         page: parsed.data.page,
         limit: parsed.data.limit,
@@ -248,7 +270,7 @@ export async function POST(req: NextRequest) {
         licenseExpiryDate: parsed.data.expiryDate
           ? new Date(parsed.data.expiryDate)
           : undefined,
-        specializations: parsed.data.specialties,
+        specializations: normalizeList(parsed.data.specialties),
         languages: parsed.data.languages
           ? parsed.data.languages
               .split(",")
@@ -263,7 +285,7 @@ export async function POST(req: NextRequest) {
         clinicProvince: parsed.data.clinicProvince,
         clinicPostalCode: parsed.data.clinicPostalCode,
         phoneNumber: parsed.data.phone ?? "",
-        servicesOffered: parsed.data.specialties,
+        servicesOffered: normalizeList(parsed.data.specialties),
         consultationFee: parsed.data.consultFee,
         consultationDuration: 30,
         isVerified: false,
